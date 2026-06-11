@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from backend.provider_backend.app.commons.config import settings
 from backend.provider_backend.app.core.apis.routes import (
     auth_router,
     health_router,
@@ -18,20 +19,28 @@ from backend.provider_backend.app.core.apis.routes import (
     quote_router,
     webhook_router,
 )
+from backend.provider_backend.app.core.database.database import (
+    close_mongo_connection,
+    connect_to_mongo,
+)
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Manage application startup and shutdown hooks."""
-    logger.info("Starting provider backend service")
-    yield
-    logger.info("Stopping provider backend service")
+    """Manage application startup and shutdown resources."""
+    logger.info("Starting %s", settings.app_name)
+    await connect_to_mongo()
+    try:
+        yield
+    finally:
+        await close_mongo_connection()
+        logger.info("Stopped %s", settings.app_name)
 
 
 app = FastAPI(
-    title="InsureFlow Provider Backend",
+    title=settings.app_name,
     version="0.1.0",
     lifespan=lifespan,
     docs_url="/docs",
