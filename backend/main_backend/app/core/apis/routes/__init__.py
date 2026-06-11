@@ -3,6 +3,11 @@
 from .admin_router import admin_router
 from .application_router import application_router
 from .auth_router import auth_router
+from .dependencies import (
+    get_current_user_id,
+    get_optional_admin_email,
+    get_optional_user_id,
+)
 from .health_router import health_router
 from .payment_router import payment_router
 from .policy_router import policy_router
