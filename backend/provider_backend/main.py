@@ -1,3 +1,4 @@
+"""Development entrypoint for the provider backend service."""
 from __future__ import annotations
 
 import os
