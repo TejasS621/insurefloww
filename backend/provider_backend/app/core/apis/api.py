@@ -23,6 +23,7 @@ from backend.provider_backend.app.core.database.database import (
     close_mongo_connection,
     connect_to_mongo,
 )
+from backend.provider_backend.app.core.services.service_exceptions import ServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,19 @@ async def validation_exception_handler(
             "success": False,
             "message": "Request validation failed.",
             "errors": exc.errors(),
+        },
+    )
+
+
+@app.exception_handler(ServiceError)
+async def service_exception_handler(_: Request, exc: ServiceError) -> JSONResponse:
+    """Convert service-layer errors into structured API responses."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "message": exc.message,
+            "errors": [{"type": exc.code, "detail": exc.message}],
         },
     )
 
