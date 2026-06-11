@@ -7,12 +7,12 @@ from pathlib import Path
 
 import uvicorn
 
-from backend.main_backend.app.commons.config import settings
-
 
 root_dir = str(Path(__file__).resolve().parents[2])
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
+
+from backend.main_backend.app.commons.config import settings
 
 
 APP_IMPORT = "backend.main_backend.app.core.apis.api:app"

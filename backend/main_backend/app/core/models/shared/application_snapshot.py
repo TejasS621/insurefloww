@@ -1,0 +1,15 @@
+from __future__ import annotations
+
+from odmantic import EmbeddedModel, Field
+
+from .coverage_details import CoverageDetails
+from .health_details import HealthDetails
+from .personal_details import PersonalDetails
+
+
+class ApplicationSnapshot(EmbeddedModel):
+    application_reference: str = Field(...)
+    insurance_type: str = Field(...)
+    personal_details: PersonalDetails = Field(...)
+    health_details: HealthDetails | None = Field(default=None)
+    coverage_details: CoverageDetails = Field(...)
