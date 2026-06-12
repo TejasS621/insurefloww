@@ -13,6 +13,7 @@ from backend.provider_backend.app.commons.config import settings
 from backend.provider_backend.app.core.apis.routes import (
     auth_router,
     health_router,
+    mock_payment_router,
     payment_router,
     policy_router,
     provider_router,
@@ -93,6 +94,7 @@ async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONRespons
 
 
 app.include_router(health_router)
+app.include_router(mock_payment_router)
 app.include_router(auth_router)
 app.include_router(provider_router)
 app.include_router(quote_router)

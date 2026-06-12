@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     server_host: str = Field(default="127.0.0.1")
     server_port: int = Field(default=8000, ge=1, le=65535)
     debug: bool = Field(default=True)
+    provider_payment_create_url: str = Field(
+        default="http://127.0.0.1:8001/api/v1/provider/payments/create"
+    )
+    provider_request_timeout_seconds: float = Field(default=10.0, gt=0)
 
 
 settings = Settings()

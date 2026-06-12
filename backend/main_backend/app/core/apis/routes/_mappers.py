@@ -36,6 +36,7 @@ from backend.main_backend.app.core.models.transaction_model import Transaction
 from backend.main_backend.app.core.models.webhook_event_model import WebhookEvent
 from backend.provider_backend.app.core.models.broker_registry_model import BrokerRegistry
 from backend.provider_backend.app.core.models.policy_model import Policy
+from backend.main_backend.app.core.services.payment_service import ProviderHostedPaymentSession
 
 
 def to_quote_response(quote: Quote) -> NormalizedQuoteResponse:
@@ -87,20 +88,16 @@ def to_application_response(
 
 
 def to_payment_initiation_response(
-    transaction: Transaction,
-    *,
-    gateway: str,
-    gateway_order_id: str,
-    currency: str,
+    session: ProviderHostedPaymentSession,
 ) -> PaymentInitiationResponse:
-    """Build the checkout payload returned by the main payment endpoint."""
+    """Build the frontend-facing hosted payment response returned by the main backend."""
     return PaymentInitiationResponse(
-        gateway=gateway,
-        provider_payment_reference=transaction.provider_payment_reference or "",
-        gateway_order_id=gateway_order_id,
-        amount=float(transaction.final_amount or 0.0),
-        currency=currency,
-        metadata=transaction.checkout_metadata,
+        payment_reference=session.payment_reference,
+        payment_url=session.payment_url,
+        amount=session.amount,
+        currency=session.currency,
+        available_payment_methods=session.available_payment_methods,
+        status=session.status,
     )
 
 
