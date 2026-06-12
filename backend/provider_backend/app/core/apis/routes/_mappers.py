@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from backend.provider_backend.app.core.apis.schemas.responses.payment_response import (
+    MockPaymentSessionResponse,
     ProviderPaymentResponse,
 )
 from backend.provider_backend.app.core.apis.schemas.responses.policy_response import (
@@ -26,6 +27,9 @@ from backend.provider_backend.app.core.models.provider_quote_model import Provid
 from backend.provider_backend.app.core.models.webhook_retry_model import WebhookRetry
 from backend.provider_backend.app.core.services.provider_sync_service import (
     RetryProcessingResult,
+)
+from backend.provider_backend.app.core.services.payment_service import (
+    MockPaymentSessionResult,
 )
 
 
@@ -76,6 +80,20 @@ def to_provider_payment_response(payment: Payment) -> ProviderPaymentResponse:
         provider_payment_reference=payment.payment_reference,
         amount=payment.amount,
         currency=payment.currency,
+    )
+
+
+def to_mock_payment_session_response(
+    session: MockPaymentSessionResult,
+) -> MockPaymentSessionResponse:
+    """Convert a mock hosted-payment session into the frontend-facing response schema."""
+    return MockPaymentSessionResponse(
+        payment_reference=session.payment.payment_reference,
+        payment_url=session.payment_url,
+        amount=session.payment.amount,
+        currency=session.payment.currency,
+        available_payment_methods=session.available_payment_methods,
+        status=session.status,
     )
 
 
