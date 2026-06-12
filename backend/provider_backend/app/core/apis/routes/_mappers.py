@@ -109,7 +109,7 @@ def to_provider_policy_response(policy: Policy) -> ProviderPolicyResponse:
         issue_date=policy.issue_date,
         start_date=policy.start_date,
         end_date=policy.end_date,
-        policy_document_url=policy.policy_document_url,
+        policy_document_url=f"/api/v1/provider/policies/{policy.policy_number}/document",
     )
 
 
