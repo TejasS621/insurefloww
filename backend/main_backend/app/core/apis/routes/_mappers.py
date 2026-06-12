@@ -3,7 +3,14 @@
 from __future__ import annotations
 
 from backend.main_backend.app.core.apis.schemas.responses.admin_response import (
+    AdminApplicationResponse,
+    AdminPolicyResponse,
+    AdminTicketResponse,
+    AuditLogResponse,
     BrokerRegistryResponse as AdminBrokerRegistryResponse,
+    DashboardStatisticsResponse,
+    StatusCountResponse,
+    UnderwritingReviewResponse,
 )
 from backend.main_backend.app.core.apis.schemas.responses.application_response import (
     ApplicationSummaryResponse,
@@ -30,12 +37,14 @@ from backend.main_backend.app.core.apis.schemas.shared import (
     PersonalDetailsSchema,
 )
 from backend.main_backend.app.core.models.application_model import Application
+from backend.main_backend.app.core.models.audit_log_model import AuditLog
 from backend.main_backend.app.core.models.quote_model import Quote
 from backend.main_backend.app.core.models.ticket_model import Ticket
 from backend.main_backend.app.core.models.transaction_model import Transaction
 from backend.main_backend.app.core.models.webhook_event_model import WebhookEvent
 from backend.provider_backend.app.core.models.broker_registry_model import BrokerRegistry
 from backend.provider_backend.app.core.models.policy_model import Policy
+from backend.provider_backend.app.core.models.provider_quote_model import ProviderQuote
 from backend.main_backend.app.core.services.payment_service import ProviderHostedPaymentSession
 
 
@@ -153,4 +162,125 @@ def to_admin_broker_response(broker: BrokerRegistry) -> AdminBrokerRegistryRespo
         created_by_admin=broker.created_by_admin,
         created_at=broker.created_at,
         updated_at=broker.updated_at,
+    )
+
+
+def to_admin_ticket_response(ticket: Ticket) -> AdminTicketResponse:
+    """Convert a ticket model into the admin ticket response schema."""
+    return AdminTicketResponse(
+        ticket_reference=ticket.ticket_reference,
+        user_id=ticket.user_id,
+        transaction_reference=ticket.transaction_reference,
+        category=ticket.category.value,
+        priority=ticket.priority.value,
+        status=ticket.status.value,
+        subject=ticket.subject,
+        message=ticket.message,
+        assigned_admin_id=ticket.assigned_admin_id,
+        admin_response=ticket.admin_response,
+        created_at=ticket.created_at,
+        updated_at=ticket.updated_at,
+    )
+
+
+def to_admin_application_response(application: Application) -> AdminApplicationResponse:
+    """Convert an application model into the admin application response schema."""
+    return AdminApplicationResponse(
+        application_reference=application.application_reference,
+        user_id=application.user_id,
+        transaction_reference=application.transaction_reference,
+        insurance_type=application.insurance_type.value,
+        application_status=application.application_status.value,
+        applicant_name=(
+            f"{application.personal_details.first_name} {application.personal_details.last_name}".strip()
+        ),
+        email=application.personal_details.email,
+        mobile_number=application.personal_details.mobile_number,
+        created_at=application.created_at,
+        updated_at=application.updated_at,
+    )
+
+
+def to_underwriting_review_response(
+    application: Application,
+    *,
+    risk_flags: list[str],
+    highest_quote_risk_category: str | None,
+) -> UnderwritingReviewResponse:
+    """Convert application and risk data into an underwriting review payload."""
+    return UnderwritingReviewResponse(
+        application_reference=application.application_reference,
+        transaction_reference=application.transaction_reference,
+        insurance_type=application.insurance_type.value,
+        application_status=application.application_status.value,
+        risk_flags=risk_flags,
+        highest_quote_risk_category=highest_quote_risk_category,
+        created_at=application.created_at,
+        updated_at=application.updated_at,
+    )
+
+
+def to_admin_policy_response(policy: Policy) -> AdminPolicyResponse:
+    """Convert a provider-issued policy into the admin policy response schema."""
+    return AdminPolicyResponse(
+        policy_number=policy.policy_number,
+        transaction_reference=policy.main_transaction_reference,
+        payment_reference=policy.payment_reference,
+        policy_status=policy.policy_status.value,
+        coverage_amount=policy.coverage_amount,
+        premium_amount=policy.premium_amount,
+        issue_date=policy.issue_date,
+        start_date=policy.start_date,
+        end_date=policy.end_date,
+        document_url=f"/api/v1/policies/{policy.policy_number}/view",
+        created_at=policy.created_at,
+        updated_at=policy.updated_at,
+    )
+
+
+def to_status_count_response(status: str, count: int) -> StatusCountResponse:
+    """Convert a grouped count entry into the dashboard status-count schema."""
+    return StatusCountResponse(status=status, count=count)
+
+
+def to_dashboard_statistics_response(
+    *,
+    total_applications: int,
+    total_tickets: int,
+    total_policies: int,
+    total_brokers: int,
+    total_audit_logs: int,
+    pending_underwriting_reviews: int,
+    application_status_breakdown: list[StatusCountResponse],
+    ticket_status_breakdown: list[StatusCountResponse],
+    policy_status_breakdown: list[StatusCountResponse],
+    broker_status_breakdown: list[StatusCountResponse],
+) -> DashboardStatisticsResponse:
+    """Build the admin dashboard response schema from aggregated metrics."""
+    return DashboardStatisticsResponse(
+        total_applications=total_applications,
+        total_tickets=total_tickets,
+        total_policies=total_policies,
+        total_brokers=total_brokers,
+        total_audit_logs=total_audit_logs,
+        pending_underwriting_reviews=pending_underwriting_reviews,
+        application_status_breakdown=application_status_breakdown,
+        ticket_status_breakdown=ticket_status_breakdown,
+        policy_status_breakdown=policy_status_breakdown,
+        broker_status_breakdown=broker_status_breakdown,
+    )
+
+
+def to_audit_log_response(log: AuditLog) -> AuditLogResponse:
+    """Convert an audit log record into the admin audit response schema."""
+    return AuditLogResponse(
+        actor_id=log.actor_id,
+        actor_role=log.actor_role,
+        action=log.action.value,
+        entity_type=log.entity_type,
+        entity_id=log.entity_id,
+        transaction_reference=log.transaction_reference,
+        old_state=log.old_state,
+        new_state=log.new_state,
+        created_at=log.created_at,
     )
