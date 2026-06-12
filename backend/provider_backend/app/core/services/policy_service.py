@@ -15,6 +15,7 @@ from backend.provider_backend.app.core.models.provider_transaction_model import 
     ProviderTransactionStatus,
 )
 
+from .policy_document_service import policy_document_service
 from .service_exceptions import ConflictServiceError, NotFoundServiceError
 
 
@@ -71,6 +72,9 @@ class ProviderPolicyService:
             start_date=today,
             end_date=today + timedelta(days=365),
         )
+        document_path = policy_document_service.generate_policy_pdf(policy)
+        policy.policy_pdf_path = str(document_path)
+        policy.policy_document_url = f"/api/v1/provider/policies/{policy.policy_number}/document"
         await engine.save(policy)
 
         provider_transaction.policy_reference = policy.policy_number

@@ -137,7 +137,7 @@ def to_policy_summary_response(policy: Policy) -> PolicySummaryResponse:
         issue_date=policy.issue_date,
         start_date=policy.start_date,
         end_date=policy.end_date,
-        document_url=policy.policy_document_url,
+        document_url=f"/api/v1/policies/{policy.policy_number}/view",
         created_at=policy.created_at,
     )
 
