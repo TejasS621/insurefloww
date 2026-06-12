@@ -12,6 +12,7 @@ from backend.provider_backend.app.core.models.policy_model import Policy
 
 from .payment_service import provider_payment_service
 from .policy_service import provider_policy_service
+from .provider_sync_service import provider_sync_service
 
 
 class WebhookService:
@@ -22,7 +23,7 @@ class WebhookService:
         engine: AIOEngine,
         request_data: PaymentSuccessWebhookRequest,
     ) -> tuple[Payment, Policy]:
-        """Apply a successful payment callback and issue a policy."""
+        """Apply a successful payment callback, issue a policy, and sync it upstream."""
         payment = await provider_payment_service.mark_payment_success(
             engine,
             gateway_order_id=request_data.gateway_order_id,
@@ -30,6 +31,10 @@ class WebhookService:
             gateway_signature=request_data.gateway_signature,
         )
         policy = await provider_policy_service.issue_policy_for_payment(
+            engine,
+            payment_reference=payment.payment_reference,
+        )
+        await provider_sync_service.dispatch_policy_issued_for_payment(
             engine,
             payment_reference=payment.payment_reference,
         )

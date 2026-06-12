@@ -17,6 +17,7 @@ from backend.provider_backend.app.core.apis.routes import (
     policy_router,
     provider_router,
     quote_router,
+    sync_router,
     webhook_router,
 )
 from backend.provider_backend.app.core.database.database import (
@@ -97,4 +98,5 @@ app.include_router(provider_router)
 app.include_router(quote_router)
 app.include_router(payment_router)
 app.include_router(policy_router)
+app.include_router(sync_router)
 app.include_router(webhook_router)

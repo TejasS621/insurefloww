@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     server_host: str = Field(default="127.0.0.1")
     server_port: int = Field(default=8001, ge=1, le=65535)
     debug: bool = Field(default=True)
+    main_backend_sync_url: str = Field(default="http://127.0.0.1:8000/api/v1/provider-sync/webhook")
+    sync_timeout_seconds: float = Field(default=10.0, gt=0)
+    sync_max_retries: int = Field(default=5, ge=1, le=20)
+    sync_retry_delay_seconds: int = Field(default=300, ge=5, le=86400)
 
 
 settings = Settings()
