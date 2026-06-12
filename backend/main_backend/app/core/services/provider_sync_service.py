@@ -15,6 +15,10 @@ from backend.main_backend.app.core.models.transaction_model import (
     Transaction,
     TransactionStatus,
 )
+from backend.main_backend.app.core.models.application_model import (
+    Application,
+    ApplicationStatus,
+)
 from backend.main_backend.app.core.models.webhook_event_model import (
     WebhookEvent,
     WebhookEventStatus,
@@ -56,6 +60,15 @@ class ProviderSyncService:
         transaction.updated_at = datetime.now(timezone.utc)
         await engine.save(transaction)
 
+        application = await engine.find_one(
+            Application,
+            Application.transaction_reference == payload.transaction_reference,
+        )
+        if application is not None:
+            self._apply_application_update(application, payload)
+            application.updated_at = datetime.now(timezone.utc)
+            await engine.save(application)
+
         event.processing_status = WebhookEventStatus.PROCESSED
         event.processed_at = datetime.now(timezone.utc)
         await engine.save(event)
@@ -87,6 +100,18 @@ class ProviderSyncService:
             transaction.payment_status = PaymentStatus.SUCCESS
             transaction.policy_status = PolicyStatus.ISSUED
             transaction.transaction_status = TransactionStatus.POLICY_ISSUED
+
+    @staticmethod
+    def _apply_application_update(
+        application: Application,
+        payload: ProviderWebhookPayload,
+    ) -> None:
+        """Map webhook semantics into application lifecycle state changes."""
+        event_type = payload.event_type.upper()
+        if event_type == "PAYMENT_FAILED":
+            application.application_status = ApplicationStatus.PAYMENT_FAILED
+        elif event_type in {"POLICY_ISSUED", "POLICY_GENERATED"}:
+            application.application_status = ApplicationStatus.POLICY_ISSUED
 
 
 provider_sync_service = ProviderSyncService()

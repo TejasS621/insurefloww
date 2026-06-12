@@ -15,10 +15,18 @@ from backend.provider_backend.app.core.apis.schemas.responses.provider_quote_res
 from backend.provider_backend.app.core.apis.schemas.responses.provider_response import (
     BrokerRegistryResponse,
 )
+from backend.provider_backend.app.core.apis.schemas.responses.sync_response import (
+    ProviderSyncStatusResponse,
+    RetryProcessingResponse,
+)
 from backend.provider_backend.app.core.models.broker_registry_model import BrokerRegistry
 from backend.provider_backend.app.core.models.payment_model import Payment
 from backend.provider_backend.app.core.models.policy_model import Policy
 from backend.provider_backend.app.core.models.provider_quote_model import ProviderQuote
+from backend.provider_backend.app.core.models.webhook_retry_model import WebhookRetry
+from backend.provider_backend.app.core.services.provider_sync_service import (
+    RetryProcessingResult,
+)
 
 
 def to_broker_response(broker: BrokerRegistry) -> BrokerRegistryResponse:
@@ -84,4 +92,27 @@ def to_provider_policy_response(policy: Policy) -> ProviderPolicyResponse:
         start_date=policy.start_date,
         end_date=policy.end_date,
         policy_document_url=policy.policy_document_url,
+    )
+
+
+def to_sync_status_response(record: WebhookRetry) -> ProviderSyncStatusResponse:
+    """Convert a webhook retry record into the provider sync response schema."""
+    return ProviderSyncStatusResponse(
+        event_type=record.event_type,
+        main_transaction_reference=record.main_transaction_reference,
+        status=record.status.value,
+        retry_count=record.retry_count,
+        next_retry_at=record.next_retry_at,
+        last_error=record.last_error,
+        updated_at=record.updated_at,
+    )
+
+
+def to_retry_processing_response(result: RetryProcessingResult) -> RetryProcessingResponse:
+    """Convert a retry-processing result into the API summary schema."""
+    return RetryProcessingResponse(
+        processed_count=result.processed_count,
+        success_count=result.success_count,
+        failed_count=result.failed_count,
+        records=[to_sync_status_response(record) for record in result.records],
     )

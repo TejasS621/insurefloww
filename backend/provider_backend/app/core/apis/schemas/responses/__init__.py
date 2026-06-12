@@ -6,5 +6,6 @@ from .payment_response import ProviderPaymentResponse
 from .policy_response import ProviderPolicyResponse
 from .provider_quote_response import ProviderQuoteAddonResponse, ProviderQuoteResponse
 from .provider_response import BrokerCredentialResponse, BrokerRegistryResponse
+from .sync_response import ProviderSyncStatusResponse, RetryProcessingResponse
 from .webhook_response import WebhookAcknowledgementResponse
 
