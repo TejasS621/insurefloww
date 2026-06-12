@@ -1,5 +1,6 @@
 """Service exports for the main backend."""
 
+from .admin_workflow_service import admin_workflow_service
 from .application_service import application_service
 from .auth_service import auth_service
 from .payment_service import payment_service
