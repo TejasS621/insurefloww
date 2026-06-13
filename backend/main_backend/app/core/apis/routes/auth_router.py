@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, status
 from odmantic import AIOEngine
 
+from backend.main_backend.app.commons.config import settings
 from backend.main_backend.app.core.apis.schemas.requests.auth_request import (
     AdminLoginRequest,
     AdminVerifyRequest,
@@ -23,7 +23,7 @@ from backend.main_backend.app.core.apis.schemas.responses.common_response import
 from backend.main_backend.app.core.database.database import get_database
 from backend.main_backend.app.core.models.user_model import OTPPurpose, User, UserRole
 from backend.main_backend.app.core.services.auth_service import auth_service
-from backend.main_backend.app.core.services.service_exceptions import IntegrationServiceError
+from backend.shared.auth.jwt_utils import create_access_token
 
 auth_router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
@@ -54,7 +54,7 @@ async def verify_customer_otp(
     request_data: OTPVerifyRequest,
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[AuthTokenResponse]:
-    """Verify the customer OTP and issue a lightweight access token."""
+    """Verify the customer OTP and return a signed JWT access token."""
     token_record = await auth_service.verify_customer_otp(
         engine,
         request_data.mobile_number,
@@ -73,41 +73,84 @@ async def verify_customer_otp(
         user.is_verified = True
         user.updated_at = datetime.now(timezone.utc)
     await engine.save(user)
+    access_token, expires_at = create_access_token(
+        subject=str(user.id),
+        role="customer",
+        secret_key=settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+        expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
+    )
+    expires_in = int((expires_at - datetime.now(timezone.utc)).total_seconds())
 
     return APIResponse(
         message="Customer authentication successful.",
         data=AuthTokenResponse(
             user_id=str(user.id),
             token=TokenData(
-                access_token=_generate_access_token(subject=token_record.mobile_number, role=UserRole.CUSTOMER.value),
-                expires_in_seconds=3600,
-                user_role=UserRole.CUSTOMER.value,
+                access_token=access_token,
+                expires_in_seconds=max(expires_in, 0),
+                user_role="customer",
             ),
         ),
     )
 
 
-@auth_router.post("/admin/login", response_model=APIResponse[OTPDispatchResponse], status_code=status.HTTP_202_ACCEPTED)
+@auth_router.post("/admin/login", response_model=APIResponse[AuthTokenResponse])
 async def request_admin_login(
-    _: AdminLoginRequest,
-) -> APIResponse[OTPDispatchResponse]:
-    """Start the admin login flow once admin persistence is available."""
-    raise IntegrationServiceError(
-        "Admin authentication is not available until admin user persistence is implemented."
+    request_data: AdminLoginRequest,
+) -> APIResponse[AuthTokenResponse]:
+    """Validate admin credentials and return a signed JWT access token."""
+    admin_identity = await auth_service.authenticate_admin_credentials(
+        email=str(request_data.email),
+        password=request_data.password,
+    )
+    access_token, expires_at = create_access_token(
+        subject=admin_identity,
+        role="admin",
+        secret_key=settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+        expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
+    )
+    expires_in = int((expires_at - datetime.now(timezone.utc)).total_seconds())
+    return APIResponse(
+        message="Admin authentication successful.",
+        data=AuthTokenResponse(
+            user_id=admin_identity,
+            token=TokenData(
+                access_token=access_token,
+                expires_in_seconds=max(expires_in, 0),
+                user_role="admin",
+            ),
+        ),
     )
 
 
 @auth_router.post("/admin/login/verify", response_model=APIResponse[AuthTokenResponse])
 async def verify_admin_login(
-    _: AdminVerifyRequest,
+    request_data: AdminVerifyRequest,
 ) -> APIResponse[AuthTokenResponse]:
-    """Verify the admin login flow once admin persistence is available."""
-    raise IntegrationServiceError(
-        "Admin authentication verification is not available until admin user persistence is implemented."
+    """Verify the admin compatibility OTP flow and return a signed JWT token."""
+    admin_identity = await auth_service.verify_admin_otp(
+        email=str(request_data.email),
+        otp_code=request_data.otp_code,
     )
-
-
-def _generate_access_token(*, subject: str, role: str) -> str:
-    """Generate a lightweight opaque access token for local development flows."""
-    return f"{role.lower()}_{subject}_{secrets.token_urlsafe(24)}"
+    access_token, expires_at = create_access_token(
+        subject=admin_identity,
+        role="admin",
+        secret_key=settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+        expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
+    )
+    expires_in = int((expires_at - datetime.now(timezone.utc)).total_seconds())
+    return APIResponse(
+        message="Admin verification successful.",
+        data=AuthTokenResponse(
+            user_id=admin_identity,
+            token=TokenData(
+                access_token=access_token,
+                expires_in_seconds=max(expires_in, 0),
+                user_role="admin",
+            ),
+        ),
+    )
 

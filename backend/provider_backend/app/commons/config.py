@@ -22,11 +22,18 @@ class Settings(BaseSettings):
     server_host: str = Field(default="127.0.0.1")
     server_port: int = Field(default=8001, ge=1, le=65535)
     debug: bool = Field(default=True)
+    jwt_secret_key: str = Field(default="change-this-provider-backend-jwt-secret")
+    jwt_algorithm: str = Field(default="HS256")
+    jwt_access_token_expire_minutes: int = Field(default=60, ge=5, le=1440)
+    provider_admin_email: str = Field(default="provider-admin@insurefloww.com")
+    provider_admin_password: str = Field(default="Provider@12345")
     mock_payment_base_url: str = Field(default="http://localhost:8001/mock-razorpay/pay")
     main_backend_sync_url: str = Field(default="http://127.0.0.1:8000/api/v1/provider-sync/webhook")
     sync_timeout_seconds: float = Field(default=10.0, gt=0)
     sync_max_retries: int = Field(default=5, ge=1, le=20)
     sync_retry_delay_seconds: int = Field(default=300, ge=5, le=86400)
+    integration_broker_code: str = Field(default="MAINAPP")
+    integration_broker_api_key: str = Field(default="mainapp_dev_api_key")
 
 
 settings = Settings()

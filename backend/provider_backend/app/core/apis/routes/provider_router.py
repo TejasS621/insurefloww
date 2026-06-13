@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, status
 from odmantic import AIOEngine
 
 from backend.provider_backend.app.core.apis.routes._mappers import to_broker_response
+from backend.provider_backend.app.core.apis.routes.dependencies import get_current_provider_admin_principal
 from backend.provider_backend.app.core.apis.schemas.requests.provider_request import (
     BrokerRegistrationRequest,
     BrokerStatusUpdateRequest,
@@ -26,6 +27,7 @@ provider_router = APIRouter(prefix="/api/v1/provider/brokers", tags=["Brokers"])
 async def register_broker(
     request_data: BrokerRegistrationRequest,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> APIResponse[BrokerCredentialResponse]:
     """Register a broker and return one-time credentials."""
     broker, api_key = await broker_service.register_broker(engine, request_data)
@@ -42,6 +44,7 @@ async def register_broker(
 @provider_router.get("", response_model=APIResponse[list[BrokerRegistryResponse]])
 async def list_brokers(
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> APIResponse[list[BrokerRegistryResponse]]:
     """List brokers known to the provider backend."""
     brokers = await broker_service.list_brokers(engine)
@@ -56,6 +59,7 @@ async def update_broker_status(
     broker_code: str,
     request_data: BrokerStatusUpdateRequest,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> APIResponse[BrokerRegistryResponse]:
     """Update broker activation state."""
     broker = await broker_service.update_broker_status(
@@ -74,6 +78,7 @@ async def rotate_broker_key(
     broker_code: str,
     request_data: KeyRotationRequest,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> APIResponse[BrokerCredentialResponse]:
     """Rotate a broker API key and return the new one-time credential."""
     broker, api_key = await broker_service.rotate_broker_key(

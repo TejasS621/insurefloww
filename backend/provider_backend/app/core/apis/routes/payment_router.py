@@ -10,6 +10,7 @@ from backend.provider_backend.app.core.apis.routes._mappers import (
     to_mock_payment_session_response,
     to_provider_payment_response,
 )
+from backend.provider_backend.app.core.apis.routes.dependencies import get_authenticated_broker
 from backend.provider_backend.app.core.apis.schemas.requests.payment_request import (
     MockPaymentCreateRequest,
     PaymentSessionCreateRequest,
@@ -31,8 +32,9 @@ mock_payment_router = APIRouter(prefix="/mock-razorpay", tags=["Mock Razorpay"])
 async def create_payment_session(
     request_data: PaymentSessionCreateRequest,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_authenticated_broker),
 ) -> APIResponse[ProviderPaymentResponse]:
-    """Create a provider-owned payment order or checkout session."""
+    """Create a provider-owned payment session for an authenticated broker."""
     payment = await provider_payment_service.create_payment_session(engine, request_data)
     return APIResponse(
         message="Provider payment session created successfully.",
@@ -44,8 +46,9 @@ async def create_payment_session(
 async def create_mock_payment_session(
     request_data: MockPaymentCreateRequest,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_authenticated_broker),
 ) -> APIResponse[MockPaymentSessionResponse]:
-    """Create a mock Razorpay-style hosted payment session for frontend redirection."""
+    """Create a mock hosted payment session for an authenticated broker request."""
     session = await provider_payment_service.create_mock_payment_session(engine, request_data)
     return APIResponse(
         message="Mock payment session created successfully.",
