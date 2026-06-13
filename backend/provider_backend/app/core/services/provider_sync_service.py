@@ -32,6 +32,39 @@ class RetryProcessingResult:
 class ProviderSyncService:
     """Dispatch provider events back to the main backend and track retries."""
 
+    async def dispatch_payment_success(
+        self,
+        engine: AIOEngine,
+        *,
+        payment_reference: str,
+    ) -> WebhookRetry:
+        """Dispatch a payment-success synchronization event to the main backend."""
+        payment = await engine.find_one(Payment, Payment.payment_reference == payment_reference)
+        if payment is None:
+            raise NotFoundServiceError("Payment not found for provider synchronization.")
+        if payment.payment_status != PaymentStatus.SUCCESS:
+            raise ConflictServiceError(
+                "Provider synchronization requires a successful payment record."
+            )
+
+        payload = {
+            "event_type": "PAYMENT_SUCCESS",
+            "transaction_reference": payment.main_transaction_reference,
+            "provider_payment_reference": payment.payment_reference,
+            "provider_policy_reference": None,
+            "payload": {
+                "payment_reference": payment.payment_reference,
+                "gateway_payment_id": payment.gateway_payment_id,
+                "payment_status": payment.payment_status.value,
+            },
+        }
+        return await self._dispatch_payload(
+            engine,
+            event_type="PAYMENT_SUCCESS",
+            main_transaction_reference=payment.main_transaction_reference,
+            payload=payload,
+        )
+
     async def dispatch_policy_issued_for_payment(
         self,
         engine: AIOEngine,

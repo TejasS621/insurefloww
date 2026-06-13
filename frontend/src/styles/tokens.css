@@ -1,26 +1,60 @@
 :root {
-  --if-navy: #0a1628;
-  --if-royal: #1b3f8b;
-  --if-indigo: #4f46e5;
-  --if-sky: #0ea5e9;
-  --if-success: #10b981;
-  --if-warning: #f59e0b;
-  --if-danger: #ef4444;
-  --if-page-bg: #f1f5f9;
-  --if-card-bg: #ffffff;
-  --if-text-1: #0f172a;
-  --if-text-2: #64748b;
-  --if-border: rgba(0, 0, 0, 0.08);
-  --if-grad-primary: linear-gradient(135deg, #1b3f8b 0%, #4f46e5 60%, #0ea5e9 100%);
-  --if-grad-hero: linear-gradient(160deg, #0a1628 0%, #1b3f8b 50%, #4f46e5 100%);
+  /* MD3 Light Mode Purple Seed Theme Colors */
+  --if-page-bg: #FFFBFE;
+  --if-surface: #F3EDF7;
+  --if-surface-glass: rgba(243, 237, 247, 0.88);
+  --if-pill-bg: rgba(103, 80, 164, 0.08);
+  --if-card-bg: #E8DEF8;
+  --if-card-alt: #F3EDF7;
+  --if-input-bg: #FFFFFF;
+  --if-text-1: #1C1B1F;
+  --if-text-2: #49454F;
+  --if-text-inverse: #FFFFFF;
+  --if-text-inverse-muted: rgba(255, 255, 255, 0.78);
+  --if-border: rgba(121, 116, 126, 0.25);
+  --if-outline: #79747E;
+  --if-modal-bg: rgba(255, 255, 255, 0.96);
+  --if-overlay-bg: rgba(28, 27, 31, 0.38);
+  --if-hero-text: rgba(28, 27, 31, 0.78);
+  --if-stat-text: #1C1B1F;
+  --if-stat-muted: rgba(28, 27, 31, 0.68);
+  --if-calendar-icon-filter: invert(23%) sepia(8%) saturate(287%) hue-rotate(230deg) brightness(91%) contrast(86%);
 
-  --fs-hero: 700 36px/1.2 "Inter", sans-serif;
-  --fs-h2: 600 24px/1.3 "Inter", sans-serif;
-  --fs-h3: 600 18px/1.4 "Inter", sans-serif;
-  --fs-body: 400 16px/1.6 "Inter", sans-serif;
-  --fs-label: 500 13px/1 "Inter", sans-serif;
-  --fs-mono: 500 14px/1.5 "JetBrains Mono", monospace;
+  /* Material Brand Colors */
+  --if-violet: #6750A4;       /* Primary */
+  --if-violet-d: #4F378B;     /* Primary Dark */
+  --if-indigo: #6750A4;
+  --if-rose: #7D5260;         /* Tertiary / Accent */
+  --if-royal: #5B3FA3;
+  --if-cyan: #2B6B8A;         /* Secondary accent */
+  --if-sky: #2B6B8A;
+  --if-navy: #1C1B1F;
+  --if-charcoal: #211F26;
+  --if-orange: #8B5000;
+  
+  --if-success: #2E7D32;
+  --if-warning: #EF6C00;
+  --if-danger: #C62828;
 
+  /* Gradients */
+  --if-grad-primary: linear-gradient(135deg, #6750A4 0%, #7D5260 100%);
+  --if-grad-hero: linear-gradient(160deg, #F3EDF7 0%, #E8DEF8 50%, #6750A4 100%);
+  --if-grad-cyan: linear-gradient(135deg, #6750A4 0%, #2B6B8A 100%);
+  --if-grad-stat-1: linear-gradient(135deg, #d9c6ff 0%, #f0d4df 100%);
+  --if-grad-stat-2: linear-gradient(135deg, #d7e3ff 0%, #e8def8 100%);
+  --if-grad-stat-3: linear-gradient(135deg, #c8e6f3 0%, #d9c6ff 100%);
+  --if-grad-stat-4: linear-gradient(135deg, #ffe1b8 0%, #ffd1c7 100%);
+
+  /* Typography Scale */
+  --fs-hero: 700 36px/1.2 "Roboto", sans-serif;
+  --fs-h2: 500 24px/1.3 "Roboto", sans-serif;
+  --fs-h3: 500 18px/1.4 "Roboto", sans-serif;
+  --fs-body: 400 16px/1.6 "Roboto", sans-serif;
+  --fs-label: 500 13px/1 "Roboto", sans-serif;
+  --fs-mono: 400 14px/1.5 "JetBrains Mono", monospace;
+
+  /* Spacing */
+  --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
@@ -29,16 +63,73 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-pill: 999px;
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
+  --radius-xxl: 48px;
+  --radius-pill: 9999px;
 
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
-  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.12);
+  /* Elevation */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(103, 80, 164, 0.05);
+  --shadow-modal: 0 8px 48px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(103, 80, 164, 0.1);
 
+  /* Layout dimensions */
   --if-navbar-height: 64px;
   --if-sidebar-width: 240px;
   --if-bottom-nav-height: 72px;
   --if-max-content-width: 1200px;
+}
+
+[data-theme="dark"] {
+  /* MD3 Dark Mode Colors */
+  --if-page-bg: #141218;
+  --if-surface: #211F26;
+  --if-surface-glass: rgba(33, 31, 38, 0.88);
+  --if-pill-bg: rgba(255, 255, 255, 0.05);
+  --if-card-bg: #4A4458;
+  --if-card-alt: #211F26;
+  --if-input-bg: #2b2831;
+  --if-text-1: #E6E1E5;
+  --if-text-2: #CAC4D0;
+  --if-text-inverse: #FFFFFF;
+  --if-text-inverse-muted: rgba(255, 255, 255, 0.78);
+  --if-border: rgba(147, 143, 153, 0.2);
+  --if-outline: #938F99;
+  --if-modal-bg: rgba(26, 26, 46, 0.95);
+  --if-overlay-bg: rgba(0, 0, 0, 0.7);
+  --if-hero-text: rgba(255, 255, 255, 0.78);
+  --if-stat-text: #FFFFFF;
+  --if-stat-muted: rgba(255, 255, 255, 0.68);
+  --if-calendar-icon-filter: invert(1);
+
+  /* Material Brand Colors */
+  --if-violet: #D0BCFF;       /* Primary */
+  --if-violet-d: #381E72;     /* Primary Dark */
+  --if-indigo: #D0BCFF;
+  --if-rose: #EFB8C8;         /* Tertiary / Accent */
+  --if-royal: #E2D6FF;
+  --if-cyan: #80C8E8;         /* Secondary accent */
+  --if-sky: #80C8E8;
+  --if-navy: #F3EFFA;
+  --if-charcoal: #141218;
+  --if-orange: #FFB4AB;
+  
+  --if-success: #81C784;
+  --if-warning: #FFB74D;
+  --if-danger: #E57373;
+
+  /* Gradients */
+  --if-grad-primary: linear-gradient(135deg, #D0BCFF 0%, #EFB8C8 100%);
+  --if-grad-hero: linear-gradient(160deg, #141218 0%, #211F26 50%, #381E72 100%);
+  --if-grad-cyan: linear-gradient(135deg, #D0BCFF 0%, #80C8E8 100%);
+  --if-grad-stat-1: linear-gradient(135deg, #211F26 0%, #141218 100%);
+  --if-grad-stat-2: linear-gradient(135deg, #141218 0%, #211F26 100%);
+  --if-grad-stat-3: linear-gradient(135deg, #211F26 0%, #211F26 100%);
+  --if-grad-stat-4: linear-gradient(135deg, #141218 0%, #141218 100%);
+
+  /* Elevation */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(208, 188, 255, 0.04);
+  --shadow-modal: 0 8px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(208, 188, 255, 0.1);
 }

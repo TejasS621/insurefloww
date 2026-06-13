@@ -29,7 +29,7 @@ class Application(Model):
     transaction_reference: str | None = Field(default=None)
     insurance_type: InsuranceType = Field(...)
     personal_details: PersonalDetails = Field(...)
-    health_details: HealthDetails | None = Field(default=None)
+    health_details: HealthDetails = Field(default_factory=HealthDetails)
     coverage_details: CoverageDetails = Field(...)
     application_status: ApplicationStatus = Field(default=ApplicationStatus.APPLICATION_SUBMITTED)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -34,9 +34,21 @@ export function ProgressStepper({ steps, currentStep }: ProgressStepperProps) {
               {isCompleted ? <Check size={14} /> : index + 1}
             </div>
             <div className="if-stepper-copy">
-              <span className="if-stepper-label">{step.title}</span>
+              <span
+                className={[
+                  "if-stepper-label",
+                  isCompleted ? "is-completed" : "",
+                  isActive ? "is-active" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                {step.title}
+              </span>
             </div>
-            {index < steps.length - 1 ? <div className="if-stepper-line" /> : null}
+            {index < steps.length - 1 ? (
+              <div className={`if-stepper-line ${isCompleted ? "is-passed" : ""}`} />
+            ) : null}
           </div>
         );
       })}

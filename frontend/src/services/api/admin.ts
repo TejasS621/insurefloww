@@ -28,6 +28,28 @@ export interface AdminPaginatedResponse<T> {
   limit: number;
 }
 
+function normalizePaginatedResponse<T>(
+  payload: AdminPaginatedResponse<T> | T[],
+  fallbackPage = 1,
+  fallbackLimit = 10,
+): AdminPaginatedResponse<T> {
+  if (Array.isArray(payload)) {
+    return {
+      items: payload,
+      total: payload.length,
+      page: fallbackPage,
+      limit: fallbackLimit,
+    };
+  }
+
+  return {
+    items: Array.isArray(payload.items) ? payload.items : [],
+    total: typeof payload.total === "number" ? payload.total : 0,
+    page: typeof payload.page === "number" ? payload.page : fallbackPage,
+    limit: typeof payload.limit === "number" ? payload.limit : fallbackLimit,
+  };
+}
+
 export interface AdminDashboardStats {
   total_applications: number;
   total_tickets: number;
@@ -106,9 +128,12 @@ export const adminApi = {
     });
   },
   listTransactions(params: URLSearchParams) {
-    return apiRequest<AdminPaginatedResponse<Record<string, string | number>>>(`/admin/transactions?${params.toString()}`, {
-      admin: true,
-    });
+    return apiRequest<AdminPaginatedResponse<Record<string, string | number>> | Array<Record<string, string | number>>>(
+      `/admin/transactions?${params.toString()}`,
+      {
+        admin: true,
+      },
+    ).then((payload) => normalizePaginatedResponse(payload));
   },
   getTransactionDetail(reference: string) {
     return apiRequest<Record<string, string | number | null>>(`/admin/transactions/${reference}`, {
@@ -116,19 +141,28 @@ export const adminApi = {
     });
   },
   listPolicies(params: URLSearchParams) {
-    return apiRequest<AdminPaginatedResponse<Record<string, string | number>>>(`/admin/policies?${params.toString()}`, {
-      admin: true,
-    });
+    return apiRequest<AdminPaginatedResponse<Record<string, string | number>> | Array<Record<string, string | number>>>(
+      `/admin/policies?${params.toString()}`,
+      {
+        admin: true,
+      },
+    ).then((payload) => normalizePaginatedResponse(payload));
   },
   listPayments(params: URLSearchParams) {
-    return apiRequest<AdminPaginatedResponse<Record<string, string | number>>>(`/admin/payments?${params.toString()}`, {
-      admin: true,
-    });
+    return apiRequest<AdminPaginatedResponse<Record<string, string | number>> | Array<Record<string, string | number>>>(
+      `/admin/payments?${params.toString()}`,
+      {
+        admin: true,
+      },
+    ).then((payload) => normalizePaginatedResponse(payload));
   },
   listTickets(params: URLSearchParams) {
-    return apiRequest<AdminPaginatedResponse<AdminTicketSummary>>(`/admin/tickets?${params.toString()}`, {
-      admin: true,
-    });
+    return apiRequest<AdminPaginatedResponse<AdminTicketSummary> | AdminTicketSummary[]>(
+      `/admin/tickets?${params.toString()}`,
+      {
+        admin: true,
+      },
+    ).then((payload) => normalizePaginatedResponse(payload));
   },
   getTicketDetail(ticketId: string) {
     return apiRequest<AdminTicketSummary>(`/admin/tickets/${ticketId}`, {
@@ -136,16 +170,16 @@ export const adminApi = {
     });
   },
   assignTicket(ticketId: string, adminId: string) {
-    return apiRequest<AdminTicketSummary>(`/admin/tickets/${ticketId}/assign`, {
+    return apiRequest<AdminTicketSummary>(`/admin/tickets/${ticketId}/assignment`, {
       admin: true,
-      method: "PUT",
+      method: "PATCH",
       body: { admin_id: adminId },
     });
   },
   updateTicketStatus(ticketId: string, status: string, adminResponse: string) {
     return apiRequest<AdminTicketSummary>(`/admin/tickets/${ticketId}/status`, {
       admin: true,
-      method: "PUT",
+      method: "PATCH",
       body: { status, admin_response: adminResponse },
     });
   },

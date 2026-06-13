@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "../../components/ui/Button";
 import { ErrorCard } from "../../components/ui/ErrorCard";
-import { StatusBadge } from "../../components/ui/StatusBadge";
 import { ToggleSwitch } from "../../components/ui/ToggleSwitch";
 import type { ApplicationQuote } from "../../services/api/customer";
 import { formatCurrencyINR } from "../../utils/formatters";
@@ -19,10 +18,6 @@ interface QuoteComparisonScreenProps {
   isProceeding: boolean;
 }
 
-/**
- * QuoteComparisonScreen renders API-backed quote selection with optimistic selection state.
- * Add-on choices are included when the customer confirms the selected plan.
- */
 export function QuoteComparisonScreen({
   quotes,
   transactionReference,
@@ -51,6 +46,23 @@ export function QuoteComparisonScreen({
     [addonTotal, selectedQuote?.total_premium],
   );
 
+  const summaryText = useMemo(() => {
+    if (!quotes || quotes.length === 0) return "";
+    const firstQuote = quotes[0];
+    const isHealth = firstQuote.plan_code.includes("HL") || firstQuote.plan_code.includes("HEALTH");
+    const isLife = firstQuote.plan_code.includes("LF") || firstQuote.plan_code.includes("LIFE");
+    const isVehicle = firstQuote.plan_code.includes("VH") || firstQuote.plan_code.includes("VEHICLE");
+    
+    let typeLabel = "Insurance";
+    if (isHealth) typeLabel = "Health";
+    else if (isLife) typeLabel = "Life";
+    else if (isVehicle) typeLabel = "Vehicle";
+
+    const coverageLakhs = firstQuote.coverage_amount / 100000;
+    const coverageLabel = coverageLakhs >= 100 ? `₹${coverageLakhs / 100}Cr` : `₹${coverageLakhs}L`;
+    return `${typeLabel} · ${coverageLabel} coverage · 1 year`;
+  }, [quotes]);
+
   if (loading) {
     return (
       <div className="if-screen-stack">
@@ -69,86 +81,176 @@ export function QuoteComparisonScreen({
 
   return (
     <div className="if-screen-stack">
-      <section className="if-section-heading">
+      <section className="if-section-heading" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
         <div>
-          <h2>Here are your personalised plans</h2>
-          <p className="if-inline-subtitle">
+          <h2 style={{ color: "var(--if-text-1)", fontSize: "24px", fontWeight: 600, margin: 0 }}>Your personalised plans</h2>
+          <p className="if-inline-subtitle" style={{ color: "var(--if-text-2)", margin: "4px 0 0" }}>
             Compare the strongest matches for your application before choosing one.
           </p>
         </div>
-        <span className="if-summary-pill">Transaction | {transactionReference ?? "Pending ref"}</span>
+        <span
+          className="if-summary-pill"
+          style={{
+            background: "rgba(124, 58, 237, 0.15)",
+            border: "1px solid var(--if-violet)",
+            borderRadius: "var(--radius-pill)",
+            color: "var(--if-text-1)",
+            padding: "8px 16px",
+            fontSize: "13px",
+            fontWeight: 500
+          }}
+        >
+          {summaryText || `Reference | ${transactionReference ?? "Pending"}`}
+        </span>
       </section>
 
       <section className="if-quote-grid">
-        {quotes.map((quote, index) => (
-          <article
-            className={`if-quote-card ${index === 0 ? "is-recommended" : ""} ${
-              selectedQuoteId === quote.quote_id ? "is-selected" : ""
-            }`}
-            key={quote.quote_id}
-          >
-            {index === 0 ? (
-              <div className="if-recommended-badge">
-                <Sparkles size={14} />
-                Best Value
+        {quotes.map((quote, index) => {
+          const isRecommended = index === 0;
+          const isSelected = selectedQuoteId === quote.quote_id || quote.quote_status === "SELECTED";
+          return (
+            <article
+              className={`if-quote-card ${isRecommended ? "is-recommended" : ""} ${
+                isSelected ? "is-selected" : ""
+              }`}
+              key={quote.quote_id}
+              style={{
+                background: "var(--if-card-bg)",
+                border: isRecommended ? "2px solid var(--if-violet)" : "1px solid var(--if-border)",
+                backgroundColor: isRecommended ? "rgba(124, 58, 237, 0.06)" : "var(--if-card-bg)",
+                borderRadius: "var(--radius-md)",
+                padding: "28px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+                position: "relative"
+              }}
+            >
+              {isRecommended ? (
+                <div
+                  className="if-recommended-badge"
+                  style={{
+                    background: "var(--if-grad-primary)",
+                    color: "var(--if-text-inverse)",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    padding: "3px 10px",
+                    borderRadius: "var(--radius-pill)",
+                    position: "absolute",
+                    right: "18px",
+                    top: "18px"
+                  }}
+                >
+                  <Sparkles size={11} style={{ display: "inline", marginRight: "4px" }} />
+                  Best Value
+                </div>
+              ) : null}
+
+              <div className="if-quote-provider" style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <div
+                  className="if-provider-avatar"
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    background: "var(--if-violet)",
+                    color: "var(--if-text-inverse)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "14px"
+                  }}
+                >
+                  {quote.provider_name
+                    .split(" ")
+                    .map((chunk) => chunk[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </div>
+                <div>
+                  <p className="if-quote-provider-name" style={{ color: "var(--if-text-2)", margin: 0, fontSize: "13px" }}>
+                    {quote.provider_name}
+                  </p>
+                  <h3 style={{ color: "var(--if-text-1)", margin: 0, fontSize: "17px", fontWeight: 600 }}>{quote.plan_name}</h3>
+                </div>
               </div>
-            ) : null}
-            <div className="if-quote-provider">
-              <div className="if-provider-avatar">
-                {quote.provider_name
-                  .split(" ")
-                  .map((chunk) => chunk[0])
-                  .join("")
-                  .slice(0, 2)}
+
+              <div style={{ marginTop: "8px" }}>
+                <p className="if-quote-coverage" style={{ color: "var(--if-cyan)", fontSize: "22px", fontWeight: 700, margin: 0 }}>
+                  {formatCurrencyINR(quote.coverage_amount)}
+                </p>
+                <p className="if-quote-monthly" style={{ color: "var(--if-text-1)", fontSize: "32px", fontWeight: 700, margin: "4px 0 0" }}>
+                  {formatCurrencyINR(Math.round(quote.total_premium / 12))} <span style={{ fontSize: "16px", fontWeight: 400, color: "var(--if-text-2)" }}>/ mo</span>
+                </p>
+                <p className="if-quote-annual" style={{ color: "var(--if-text-2)", fontSize: "14px", margin: "2px 0 0" }}>
+                  {formatCurrencyINR(quote.total_premium)} / yr
+                </p>
               </div>
-              <div>
-                <p className="if-quote-provider-name">{quote.provider_name}</p>
-                <h3>{quote.plan_name}</h3>
-              </div>
-            </div>
-            <p className="if-quote-coverage">{formatCurrencyINR(quote.coverage_amount)}</p>
-            <p className="if-quote-monthly">{formatCurrencyINR(quote.total_premium / 12)} / month</p>
-            <p className="if-quote-annual">{formatCurrencyINR(quote.total_premium)} billed annually</p>
-            <ul className="if-benefit-list">
-              {[
-                `${quote.provider_name} managed servicing`,
-                `Plan code ${quote.plan_code}`,
-                "Digital policy issuance",
-                "Add-on customisation support",
-              ].map((benefit) => (
-                <li key={benefit}>
-                  <CheckCircle2 size={16} />
-                  <span>{benefit}</span>
-                </li>
-              ))}
-            </ul>
-            <Button className="if-button-full" onClick={() => setSelectedQuoteId(quote.quote_id)}>
-              Select Plan
-            </Button>
-          </article>
-        ))}
+
+              <hr style={{ borderColor: "var(--if-border)", margin: "8px 0 4px", borderStyle: "solid", borderWidth: "0.5px" }} />
+
+              <ul className="if-benefit-list" style={{ display: "grid", gap: "10px", padding: 0, listStyle: "none", margin: 0 }}>
+                {[
+                  `${quote.provider_name} managed servicing`,
+                  `Plan code: ${quote.plan_code}`,
+                  "Digital policy issuance",
+                  "Add-on customisation support",
+                ].map((benefit) => (
+                  <li key={benefit} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "var(--if-text-1)" }}>
+                    <CheckCircle2 size={15} style={{ color: "var(--if-cyan)", flexShrink: 0 }} />
+                    <span>{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                variant={isSelected ? "primary" : "ghost"}
+                className="if-button-full"
+                onClick={() => setSelectedQuoteId(quote.quote_id)}
+                style={{ marginTop: "auto" }}
+              >
+                Select Plan
+              </Button>
+            </article>
+          );
+        })}
       </section>
 
       {selectedQuote ? (
-        <section className="if-surface-card">
+        <section className="if-surface-card" style={{ marginTop: "32px", background: "var(--if-card-bg)" }}>
           <div className="if-section-heading">
             <div>
-              <p className="if-eyebrow">Add-ons</p>
-              <h2>Enhance your plan</h2>
+              <p className="if-eyebrow">Enhance your plan</p>
+              <h2 style={{ color: "var(--if-text-1)", fontSize: "18px", fontWeight: 600 }}>Optional Add-ons</h2>
             </div>
-            <StatusBadge status="processing">Customisable</StatusBadge>
           </div>
-          <div className="if-addon-stack">
+          <div className="if-addon-stack" style={{ display: "grid", gap: "12px", marginTop: "16px" }}>
             {selectedQuote.available_addons.map((addon) => {
               const checked = enabledAddons.includes(addon.addon_code);
               return (
-                <div className="if-addon-row" key={addon.addon_code}>
+                <div
+                  className="if-addon-row"
+                  key={addon.addon_code}
+                  style={{
+                    background: "var(--if-card-bg)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: "14px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    border: "1px solid var(--if-border)"
+                  }}
+                >
                   <div>
-                    <h3>{addon.addon_name}</h3>
-                    <p>{addon.addon_code}</p>
+                    <h3 style={{ color: "var(--if-text-1)", fontSize: "15px", fontWeight: 600, margin: 0 }}>{addon.addon_name}</h3>
+                    <p style={{ color: "var(--if-text-2)", fontSize: "13px", margin: "2px 0 0" }}>{addon.addon_code}</p>
                   </div>
-                  <div className="if-addon-action">
-                    <span className="if-addon-price">+{formatCurrencyINR(addon.addon_price)} / year</span>
+                  <div className="if-addon-action" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                    <span className="if-addon-price" style={{ color: "var(--if-cyan)", fontSize: "14px", fontWeight: 500 }}>
+                      +{formatCurrencyINR(addon.addon_price)} / yr
+                    </span>
                     <ToggleSwitch
                       ariaLabel={`Toggle ${addon.addon_name}`}
                       checked={checked}
@@ -168,14 +270,33 @@ export function QuoteComparisonScreen({
         </section>
       ) : null}
 
-      <div className="if-sticky-total-bar">
+      <div
+        className="if-sticky-total-bar"
+        style={{
+          background: "color-mix(in srgb, var(--if-charcoal) 92%, transparent)",
+          backdropFilter: "blur(12px)",
+          border: "1px solid var(--if-border)",
+          borderRadius: "var(--radius-md)",
+          padding: "18px 24px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          position: "sticky",
+          bottom: "16px",
+          zIndex: 30,
+          marginTop: "32px",
+          boxShadow: "var(--shadow-card)"
+        }}
+      >
         <div>
-          <p className="if-total-label">
-            Base premium {formatCurrencyINR(selectedQuote?.total_premium ?? 0)} + Add-ons {formatCurrencyINR(addonTotal)} =
+          <p className="if-total-label" style={{ color: "var(--if-text-2)", margin: 0, fontSize: "13px" }}>
+            Base {formatCurrencyINR(selectedQuote?.total_premium ?? 0)} + Add-ons {formatCurrencyINR(addonTotal)} =
           </p>
-          <p className="if-total-value">Total {formatCurrencyINR(grandTotal)}</p>
+          <p className="if-total-value" style={{ color: "var(--if-text-inverse)", fontSize: "20px", fontWeight: 700, margin: "4px 0 0" }}>
+            Total {formatCurrencyINR(grandTotal)}
+          </p>
         </div>
-        <div className="if-sticky-total-actions">
+        <div className="if-sticky-total-actions" style={{ display: "flex", gap: "12px" }}>
           <Button onClick={onBack} variant="ghost">
             Back
           </Button>

@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type ButtonVariant = "primary" | "ghost";
+type ButtonVariant = "primary" | "ghost" | "danger-ghost";
 type ButtonSize = "default" | "large";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -29,7 +29,11 @@ export function Button({
 }: ButtonProps) {
   const classes = [
     "if-button",
-    variant === "primary" ? "if-button-primary" : "if-button-ghost",
+    variant === "primary"
+      ? "if-button-primary"
+      : variant === "ghost"
+      ? "if-button-ghost"
+      : "if-button-danger-ghost",
     size === "large" ? "if-button-large" : "",
     iconOnly ? "if-button-icon-only" : "",
     className,

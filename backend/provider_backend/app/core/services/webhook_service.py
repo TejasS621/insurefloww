@@ -30,6 +30,10 @@ class WebhookService:
             gateway_payment_id=request_data.gateway_payment_id,
             gateway_signature=request_data.gateway_signature,
         )
+        await provider_sync_service.dispatch_payment_success(
+            engine,
+            payment_reference=payment.payment_reference,
+        )
         policy = await provider_policy_service.issue_policy_for_payment(
             engine,
             payment_reference=payment.payment_reference,

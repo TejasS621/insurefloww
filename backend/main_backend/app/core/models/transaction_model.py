@@ -54,7 +54,7 @@ class Transaction(Model):
     provider_payment_reference: str | None = Field(default=None)
     provider_policy_reference: str | None = Field(default=None)
     checkout_metadata: dict[str, object] = Field(default_factory=dict)
-    application_snapshot: ApplicationSnapshot | None = Field(default=None)
+    application_snapshot: ApplicationSnapshot = Field(...)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

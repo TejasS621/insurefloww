@@ -5,8 +5,13 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
 
+import httpx
 from odmantic import AIOEngine
 
+from backend.main_backend.app.commons.config import settings
+from backend.main_backend.app.core.apis.schemas.requests.application_request import (
+    ApplicationCreateRequest,
+)
 from backend.main_backend.app.core.models.application_model import (
     Application,
     ApplicationStatus,
@@ -14,11 +19,95 @@ from backend.main_backend.app.core.models.application_model import (
 from backend.main_backend.app.core.models.quote_model import Quote, QuoteStatus
 from backend.main_backend.app.core.models.transaction_model import Transaction, TransactionStatus
 
-from .service_exceptions import ConflictServiceError, NotFoundServiceError
+from .service_exceptions import ConflictServiceError, IntegrationServiceError, NotFoundServiceError
 
 
 class QuoteService:
     """Store normalized quotes and manage quote selection."""
+
+    async def request_and_store_quotes_for_application(
+        self,
+        engine: AIOEngine,
+        *,
+        application: Application,
+        transaction: Transaction,
+        request_data: ApplicationCreateRequest,
+    ) -> list[Quote]:
+        """Request provider quotes for a freshly-created application and persist them locally."""
+        payload = {
+            "main_transaction_reference": transaction.transaction_reference,
+            "application_reference": application.application_reference,
+            "provider_code": settings.integration_provider_code,
+            "broker_code": settings.integration_broker_code,
+            "insurance_type": request_data.insurance_type.value,
+            "personal_details": request_data.personal_details.model_dump(
+                mode="json",
+                exclude_none=True,
+            ),
+            "health_details": (
+                request_data.health_details.model_dump(mode="json", exclude_none=True)
+                if request_data.health_details
+                else None
+            ),
+            "coverage_details": request_data.coverage_details.model_dump(
+                mode="json",
+                exclude_none=True,
+            ),
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=settings.provider_request_timeout_seconds) as client:
+                response = await client.post(
+                    settings.provider_quote_generate_url,
+                    json=payload,
+                    headers={
+                        "X-Broker-Code": settings.integration_broker_code,
+                        "X-Broker-Api-Key": settings.integration_broker_api_key,
+                    },
+                )
+        except httpx.HTTPError as exc:
+            raise IntegrationServiceError(
+                "Unable to reach the provider backend to generate quotes."
+            ) from exc
+
+        if response.status_code >= 400:
+            try:
+                response_payload = response.json()
+            except ValueError:
+                response_payload = {}
+            provider_message = response_payload.get(
+                "message",
+                "Provider backend rejected the quote generation request.",
+            )
+            raise IntegrationServiceError(provider_message)
+
+        try:
+            response_payload = response.json()
+        except ValueError as exc:
+            raise IntegrationServiceError(
+                "Provider backend returned an invalid quote generation response."
+            ) from exc
+
+        quote_payloads = response_payload.get("data")
+        if not isinstance(quote_payloads, list):
+            raise IntegrationServiceError(
+                "Provider backend returned a malformed quote response payload."
+            )
+
+        stored_quotes = await self.store_provider_quotes(
+            engine,
+            transaction_id=str(transaction.id),
+            transaction_reference=transaction.transaction_reference,
+            provider_quotes=quote_payloads,
+        )
+        transaction.transaction_status = TransactionStatus.QUOTE_GENERATED
+        transaction.updated_at = datetime.now(timezone.utc)
+        await engine.save(transaction)
+
+        application.application_status = ApplicationStatus.QUOTE_GENERATED
+        application.updated_at = datetime.now(timezone.utc)
+        await engine.save(application)
+        return stored_quotes
 
     async def list_quotes_for_transaction(
         self,

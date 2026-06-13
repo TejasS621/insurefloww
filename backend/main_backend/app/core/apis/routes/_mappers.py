@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from backend.main_backend.app.core.apis.schemas.responses.admin_response import (
     AdminApplicationResponse,
+    AdminPaymentResponse,
     AdminPolicyResponse,
     AdminTicketResponse,
+    AdminTransactionDetailResponse,
+    AdminTransactionResponse,
     AuditLogResponse,
     BrokerRegistryResponse as AdminBrokerRegistryResponse,
     DashboardStatisticsResponse,
@@ -43,9 +46,42 @@ from backend.main_backend.app.core.models.ticket_model import Ticket
 from backend.main_backend.app.core.models.transaction_model import Transaction
 from backend.main_backend.app.core.models.webhook_event_model import WebhookEvent
 from backend.provider_backend.app.core.models.broker_registry_model import BrokerRegistry
+from backend.provider_backend.app.core.models.payment_model import Payment as ProviderPayment
 from backend.provider_backend.app.core.models.policy_model import Policy
 from backend.provider_backend.app.core.models.provider_quote_model import ProviderQuote
 from backend.main_backend.app.core.services.payment_service import ProviderHostedPaymentSession
+
+
+def _to_date(value: object) -> object:
+    """Convert stored datetimes to plain dates for API responses."""
+    return value.date() if hasattr(value, "date") else value
+
+
+def _to_health_details_schema(health_details: object | None) -> HealthDetailsSchema | None:
+    """Convert stored health details into the public API schema shape."""
+    if health_details is None:
+        return None
+    payload = health_details.model_dump()
+    if not any(
+        [
+            payload.get("height_cm") is not None,
+            payload.get("weight_kg") is not None,
+            payload.get("calculated_bmi") is not None,
+            payload.get("smoker"),
+            payload.get("diabetes"),
+            payload.get("blood_pressure"),
+            payload.get("heart_ailments"),
+            payload.get("pre_existing_disease"),
+            payload.get("other_conditions"),
+        ]
+    ):
+        return None
+    raw_conditions = payload.get("other_conditions")
+    if isinstance(raw_conditions, str):
+        payload["other_conditions"] = [item.strip() for item in raw_conditions.split(",") if item.strip()]
+    else:
+        payload["other_conditions"] = []
+    return HealthDetailsSchema.model_validate(payload)
 
 
 def to_quote_response(quote: Quote) -> NormalizedQuoteResponse:
@@ -83,11 +119,7 @@ def to_application_response(
         transaction_reference=application.transaction_reference,
         insurance_type=application.insurance_type.value,
         personal_details=PersonalDetailsSchema.model_validate(application.personal_details.model_dump()),
-        health_details=(
-            HealthDetailsSchema.model_validate(application.health_details.model_dump())
-            if application.health_details
-            else None
-        ),
+        health_details=_to_health_details_schema(application.health_details),
         coverage_details=CoverageDetailsSchema.model_validate(application.coverage_details.model_dump()),
         application_status=application.application_status.value,
         quotes=[to_quote_response(quote) for quote in quotes or []],
@@ -143,9 +175,9 @@ def to_policy_summary_response(policy: Policy) -> PolicySummaryResponse:
         policy_status=policy.policy_status.value,
         coverage_amount=policy.coverage_amount,
         premium_amount=policy.premium_amount,
-        issue_date=policy.issue_date,
-        start_date=policy.start_date,
-        end_date=policy.end_date,
+        issue_date=_to_date(policy.issue_date),
+        start_date=_to_date(policy.start_date),
+        end_date=_to_date(policy.end_date),
         document_url=f"/api/v1/policies/{policy.policy_number}/view",
         created_at=policy.created_at,
     )
@@ -160,6 +192,7 @@ def to_admin_broker_response(broker: BrokerRegistry) -> AdminBrokerRegistryRespo
         webhook_url=broker.webhook_url,
         status=broker.status.value,
         created_by_admin=broker.created_by_admin,
+        last_key_rotated_at=broker.last_key_rotated_at,
         created_at=broker.created_at,
         updated_at=broker.updated_at,
     )
@@ -229,12 +262,78 @@ def to_admin_policy_response(policy: Policy) -> AdminPolicyResponse:
         policy_status=policy.policy_status.value,
         coverage_amount=policy.coverage_amount,
         premium_amount=policy.premium_amount,
-        issue_date=policy.issue_date,
-        start_date=policy.start_date,
-        end_date=policy.end_date,
+        issue_date=_to_date(policy.issue_date),
+        start_date=_to_date(policy.start_date),
+        end_date=_to_date(policy.end_date),
         document_url=f"/api/v1/policies/{policy.policy_number}/view",
         created_at=policy.created_at,
         updated_at=policy.updated_at,
+    )
+
+
+def to_admin_transaction_response(
+    transaction: Transaction,
+    *,
+    application: Application | None = None,
+) -> AdminTransactionResponse:
+    """Convert a main transaction into the admin table response schema."""
+    customer_name = " ".join(
+        part
+        for part in [
+            transaction.application_snapshot.personal_details.first_name,
+            transaction.application_snapshot.personal_details.last_name,
+        ]
+        if part
+    ).strip() or "Customer"
+    return AdminTransactionResponse(
+        transaction_reference=transaction.transaction_reference,
+        customer_name=customer_name,
+        insurance_type=transaction.application_snapshot.insurance_type,
+        amount=transaction.final_amount or 0.0,
+        status=transaction.transaction_status.value,
+        payment_status=transaction.payment_status.value,
+        policy_status=transaction.policy_status.value,
+        user_id=application.user_id if application is not None else None,
+        created_at=transaction.created_at,
+        updated_at=transaction.updated_at,
+        date=transaction.created_at.date().isoformat(),
+    )
+
+
+def to_admin_transaction_detail_response(
+    transaction: Transaction,
+    *,
+    application: Application | None = None,
+) -> AdminTransactionDetailResponse:
+    """Convert a main transaction into the admin drawer detail schema."""
+    base = to_admin_transaction_response(transaction, application=application)
+    return AdminTransactionDetailResponse(
+        **base.model_dump(),
+        application_reference=application.application_reference if application is not None else None,
+        selected_quote_id=transaction.selected_quote_id,
+        selected_addons=transaction.selected_addons,
+        base_premium=transaction.base_premium,
+        addon_amount=transaction.addon_amount,
+        final_amount=transaction.final_amount,
+        provider_transaction_reference=transaction.provider_transaction_reference,
+        provider_payment_reference=transaction.provider_payment_reference,
+        provider_policy_reference=transaction.provider_policy_reference,
+    )
+
+
+def to_admin_payment_response(payment: ProviderPayment) -> AdminPaymentResponse:
+    """Convert a provider payment record into the admin payment response schema."""
+    return AdminPaymentResponse(
+        payment_reference=payment.payment_reference,
+        transaction_reference=payment.main_transaction_reference,
+        gateway=payment.gateway_name.value,
+        amount=payment.amount,
+        currency=payment.currency,
+        status=payment.payment_status.value,
+        provider_transaction_reference=payment.provider_transaction_reference,
+        created_at=payment.created_at,
+        updated_at=payment.updated_at,
+        date=payment.created_at.date().isoformat(),
     )
 
 

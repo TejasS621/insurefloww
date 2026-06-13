@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from odmantic import AIOEngine
 
@@ -58,7 +58,7 @@ class ProviderPolicyService:
         if quote is None:
             raise NotFoundServiceError("Provider quote not found for policy issuance.")
 
-        today = date.today()
+        issued_at = datetime.now(timezone.utc).replace(microsecond=0)
         policy = Policy(
             policy_number=self._generate_policy_number(),
             provider_transaction_reference=provider_transaction.provider_transaction_reference,
@@ -68,9 +68,9 @@ class ProviderPolicyService:
             policy_status=PolicyStatus.ISSUED,
             coverage_amount=quote.coverage_amount,
             premium_amount=quote.total_premium,
-            issue_date=today,
-            start_date=today,
-            end_date=today + timedelta(days=365),
+            issue_date=issued_at,
+            start_date=issued_at,
+            end_date=issued_at + timedelta(days=365),
         )
         document_path = policy_document_service.generate_policy_pdf(policy)
         policy.policy_pdf_path = str(document_path)

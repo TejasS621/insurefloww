@@ -24,7 +24,9 @@ class ProviderQuoteResponse(BaseModel):
 
     provider_quote_id: str
     provider_transaction_reference: str
+    provider_name: str
     plan_code: str
+    plan_name: str
     base_premium: float = Field(..., ge=0)
     tax_amount: float = Field(..., ge=0)
     total_premium: float = Field(..., ge=0)

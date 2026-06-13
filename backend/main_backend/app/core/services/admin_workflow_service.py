@@ -26,11 +26,16 @@ from backend.main_backend.app.core.models.audit_log_model import AuditAction, Au
 from backend.main_backend.app.core.models.quote_model import Quote
 from backend.main_backend.app.core.models.ticket_model import Ticket, TicketStatus
 from backend.main_backend.app.core.models.transaction_model import (
+    PaymentStatus as MainPaymentStatus,
     PolicyStatus as MainPolicyStatus,
     Transaction,
     TransactionStatus,
 )
 from backend.provider_backend.app.core.models.broker_registry_model import BrokerRegistry
+from backend.provider_backend.app.core.models.payment_model import (
+    Payment as ProviderPayment,
+    PaymentStatus as ProviderPaymentStatus,
+)
 from backend.provider_backend.app.core.models.policy_model import (
     Policy,
     PolicyStatus as ProviderPolicyStatus,
@@ -75,6 +80,10 @@ class AdminWorkflowService:
         """Return all tickets ordered from newest to oldest."""
         tickets = await engine.find(Ticket)
         return sorted(tickets, key=lambda item: item.updated_at, reverse=True)
+
+    async def get_ticket_detail(self, engine: AIOEngine, *, ticket_reference: str) -> Ticket:
+        """Return one ticket for the admin drawer view."""
+        return await self._get_ticket(engine, ticket_reference)
 
     async def assign_ticket(
         self,
@@ -263,6 +272,31 @@ class AdminWorkflowService:
         policies = await engine.find(Policy)
         return sorted(policies, key=lambda item: item.updated_at, reverse=True)
 
+    async def list_transactions(self, engine: AIOEngine) -> list[Transaction]:
+        """Return all transactions ordered from newest to oldest."""
+        transactions = await engine.find(Transaction)
+        return sorted(transactions, key=lambda item: item.updated_at, reverse=True)
+
+    async def get_transaction_detail(
+        self,
+        engine: AIOEngine,
+        *,
+        transaction_reference: str,
+    ) -> Transaction:
+        """Return one transaction for the admin drawer view."""
+        transaction = await engine.find_one(
+            Transaction,
+            Transaction.transaction_reference == transaction_reference,
+        )
+        if transaction is None:
+            raise NotFoundServiceError("The requested transaction could not be found.")
+        return transaction
+
+    async def list_payments(self, engine: AIOEngine) -> list[ProviderPayment]:
+        """Return all provider payments ordered from newest to oldest."""
+        payments = await engine.find(ProviderPayment)
+        return sorted(payments, key=lambda item: item.updated_at, reverse=True)
+
     async def update_policy_status(
         self,
         engine: AIOEngine,
@@ -341,6 +375,44 @@ class AdminWorkflowService:
                 Counter(broker.status.value for broker in brokers)
             ),
         )
+
+    @staticmethod
+    def match_transaction_status_filter(transaction: Transaction, status: str) -> bool:
+        """Return whether a transaction matches the admin status filter."""
+        normalized = status.strip().upper()
+        if normalized in {"", "ALL"}:
+            return True
+        if normalized == "SUCCESS":
+            return (
+                transaction.payment_status.value == "SUCCESS"
+                or transaction.transaction_status in {TransactionStatus.PAYMENT_SUCCESS, TransactionStatus.POLICY_ISSUED}
+            )
+        if normalized == "FAILED":
+            return (
+                transaction.payment_status.value == "FAILED"
+                or transaction.transaction_status == TransactionStatus.PAYMENT_FAILED
+            )
+        if normalized == "PENDING":
+            return transaction.payment_status in {
+                MainPaymentStatus.NOT_INITIATED,
+                MainPaymentStatus.PENDING,
+            } or transaction.transaction_status in {
+                TransactionStatus.APPLICATION_SUBMITTED,
+                TransactionStatus.QUOTE_GENERATED,
+                TransactionStatus.QUOTE_SELECTED,
+                TransactionStatus.PAYMENT_PENDING,
+            }
+        return transaction.transaction_status.value == normalized or transaction.payment_status.value == normalized
+
+    @staticmethod
+    def match_payment_status_filter(payment: ProviderPayment, status: str) -> bool:
+        """Return whether a payment matches the admin status filter."""
+        normalized = status.strip().upper()
+        if normalized in {"", "ALL"}:
+            return True
+        if normalized == "PENDING":
+            return payment.payment_status in {ProviderPaymentStatus.CREATED, ProviderPaymentStatus.PENDING}
+        return payment.payment_status.value == normalized
 
     async def list_audit_logs(self, engine: AIOEngine, *, limit: int = 100) -> list[AuditLog]:
         """Return the newest audit log records up to the supplied limit."""
@@ -458,7 +530,11 @@ class AdminWorkflowService:
         if application.health_details.pre_existing_disease:
             flags.append("PRE_EXISTING_DISEASE")
         if application.health_details.other_conditions:
-            flags.extend(application.health_details.other_conditions)
+            flags.extend(
+                item.strip()
+                for item in application.health_details.other_conditions.split(",")
+                if item.strip()
+            )
         return flags
 
     @staticmethod

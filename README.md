@@ -1,89 +1,35 @@
 # InsureFloww
 
-This folder is currently a clean project scaffold for the new InsureFloww rebuild.
+InsureFloww is a broker-led insurance platform with:
 
-The structure combines:
+- `backend/main_backend` for customer, admin, payment, policy, and ticket APIs
+- `backend/provider_backend` for quote generation, provider payments, and provider sync flows
+- `frontend` for the customer and admin UI
 
-- the target product architecture from the current planning docs
-- the layered FastAPI organization from the referenced tutorial
-- separate service boundaries for `main_backend` and `provider_backend`
+## Local Setup
 
-## Current Structure
+1. Make sure MongoDB is running on `mongodb://localhost:27017/`.
+2. Use the root `.env` file for backend settings.
+3. Optionally copy `frontend/.env.example` into `frontend/.env` if you want to override the default API base URL.
 
-```txt
-InsureFloww/
-  backend/
-    main_backend/
-      app/
-        commons/
-        core/
-          apis/
-            routes/
-            schemas/
-              requests/
-              responses/
-          controllers/
-          cruds/
-          database/
-          models/
-            shared/
-          providers/
-          services/
-          utils/
-            emails/
-    provider_backend/
-      app/
-        commons/
-        core/
-          apis/
-            routes/
-            schemas/
-              requests/
-              responses/
-          controllers/
-          cruds/
-          database/
-          events/
-          models/
-            shared/
-          services/
-          utils/
-            emails/
-  frontend/
-    public/
-    src/
-      assets/
-      components/
-        ui/
-      pages/
-        landing/
-        auth/
-        application/
-        quotes/
-        payment/
-        policy/
-        dashboard/
-        profile/
-        admin/
-      services/
-      store/
-      utils/
-  docs/
-    adr/
-    architecture/
-    postman/
-    reference/
-  scripts/
-```
+## Local Startup Order
 
-## Docs
+1. Start the provider backend:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\start-provider-backend.ps1`
+2. Start the main backend:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\start-main-backend.ps1`
+3. Start the frontend:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\start-frontend.ps1`
 
-- [Architecture Notes](C:\InsureFloww\docs\architecture\DOCUMENTATION.md)
-- [Implementation Plan](C:\InsureFloww\docs\architecture\IMPLEMENTATION_PLAN.md)
-- [ADR Notes](C:\InsureFloww\docs\adr\ADR.md)
-- [ADR Index](C:\InsureFloww\docs\adr\README.md)
+## Key Local URLs
 
-## Status
+- Frontend: `http://127.0.0.1:5173`
+- Main backend docs: `http://127.0.0.1:8000/docs`
+- Provider backend docs: `http://127.0.0.1:8001/docs`
 
-Only the folder structure and documentation layout are in place right now.
-No old application code has been migrated into this scaffold.
+## Reference Docs
+
+- [Architecture Notes](C:/InsureFloww/docs/architecture/DOCUMENTATION.md)
+- [Implementation Plan](C:/InsureFloww/docs/architecture/IMPLEMENTATION_PLAN.md)
+- [ADR Notes](C:/InsureFloww/docs/adr/ADR.md)
+- [ADR Index](C:/InsureFloww/docs/adr/README.md)

@@ -34,6 +34,17 @@ class Settings(BaseSettings):
     sync_retry_delay_seconds: int = Field(default=300, ge=5, le=86400)
     integration_broker_code: str = Field(default="MAINAPP")
     integration_broker_api_key: str = Field(default="mainapp_dev_api_key")
+    cors_allowed_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+            "http://localhost:5173",
+            "http://localhost:5174",
+        ]
+    )
+    cors_allowed_origin_regex: str = Field(
+        default=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+    )
 
 
 settings = Settings()

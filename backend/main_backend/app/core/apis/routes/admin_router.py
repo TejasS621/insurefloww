@@ -8,8 +8,11 @@ from odmantic import AIOEngine
 from backend.main_backend.app.core.apis.routes._mappers import (
     to_admin_application_response,
     to_admin_broker_response,
+    to_admin_payment_response,
     to_admin_policy_response,
     to_admin_ticket_response,
+    to_admin_transaction_detail_response,
+    to_admin_transaction_response,
     to_audit_log_response,
     to_dashboard_statistics_response,
     to_status_count_response,
@@ -30,8 +33,11 @@ from backend.main_backend.app.core.apis.schemas.requests.admin_request import (
 )
 from backend.main_backend.app.core.apis.schemas.responses.admin_response import (
     AdminApplicationResponse,
+    AdminPaymentResponse,
     AdminPolicyResponse,
     AdminTicketResponse,
+    AdminTransactionDetailResponse,
+    AdminTransactionResponse,
     AuditLogResponse,
     BrokerRegistryResponse,
     DashboardStatisticsResponse,
@@ -39,6 +45,7 @@ from backend.main_backend.app.core.apis.schemas.responses.admin_response import 
 )
 from backend.main_backend.app.core.apis.schemas.responses.common_response import APIResponse
 from backend.main_backend.app.core.database.database import get_database
+from backend.main_backend.app.core.models.application_model import Application
 from backend.main_backend.app.core.services.admin_workflow_service import admin_workflow_service
 from backend.provider_backend.app.core.apis.schemas.requests.provider_request import (
     BrokerRegistrationRequest as ProviderBrokerRegistrationRequest,
@@ -57,7 +64,7 @@ async def register_broker(
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[BrokerRegistryResponse]:
     """Register a broker through the admin orchestration API."""
-    broker, _ = await broker_service.register_broker(
+    broker, api_key = await broker_service.register_broker(
         engine,
         ProviderBrokerRegistrationRequest(
             broker_name=request_data.broker_name,
@@ -69,7 +76,7 @@ async def register_broker(
     )
     return APIResponse(
         message="Broker registered successfully.",
-        data=to_admin_broker_response(broker),
+        data=to_admin_broker_response(broker).model_copy(update={"api_key": api_key}),
     )
 
 
@@ -116,7 +123,7 @@ async def rotate_broker_key(
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[BrokerRegistryResponse]:
     """Rotate broker credentials through the admin API."""
-    broker, _ = await broker_service.rotate_broker_key(
+    broker, api_key = await broker_service.rotate_broker_key(
         engine,
         broker_code=broker_code,
         request_data=ProviderKeyRotationRequest(
@@ -126,7 +133,7 @@ async def rotate_broker_key(
     )
     return APIResponse(
         message="Broker key rotated successfully.",
-        data=to_admin_broker_response(broker),
+        data=to_admin_broker_response(broker).model_copy(update={"api_key": api_key}),
     )
 
 
@@ -140,6 +147,23 @@ async def list_tickets(
     return APIResponse(
         message="Admin tickets fetched successfully.",
         data=[to_admin_ticket_response(ticket) for ticket in tickets],
+    )
+
+
+@admin_router.get("/tickets/{ticket_reference}", response_model=APIResponse[AdminTicketResponse])
+async def get_ticket_detail(
+    ticket_reference: str,
+    engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
+) -> APIResponse[AdminTicketResponse]:
+    """Return one admin ticket detail record for the drawer workflow."""
+    ticket = await admin_workflow_service.get_ticket_detail(
+        engine,
+        ticket_reference=ticket_reference,
+    )
+    return APIResponse(
+        message="Admin ticket detail fetched successfully.",
+        data=to_admin_ticket_response(ticket),
     )
 
 
@@ -266,6 +290,112 @@ async def list_policies(
     return APIResponse(
         message="Admin policies fetched successfully.",
         data=[to_admin_policy_response(policy) for policy in policies],
+    )
+
+
+@admin_router.get("/transactions", response_model=APIResponse[list[AdminTransactionResponse]])
+async def list_transactions(
+    status: str = Query(default="ALL"),
+    search: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=10, ge=1, le=100),
+    engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
+) -> APIResponse[list[AdminTransactionResponse]]:
+    """List admin-visible transaction records with light filtering and pagination."""
+    transactions = await admin_workflow_service.list_transactions(engine)
+    applications = await admin_workflow_service.list_applications(engine)
+    application_by_reference = {
+        application.transaction_reference: application
+        for application in applications
+        if application.transaction_reference
+    }
+    filtered = [
+        transaction
+        for transaction in transactions
+        if admin_workflow_service.match_transaction_status_filter(transaction, status)
+    ]
+    if search:
+        needle = search.strip().lower()
+        filtered = [
+            transaction
+            for transaction in filtered
+            if needle in transaction.transaction_reference.lower()
+            or needle in transaction.application_snapshot.insurance_type.lower()
+            or needle in (
+                f"{transaction.application_snapshot.personal_details.first_name} "
+                f"{transaction.application_snapshot.personal_details.last_name}"
+            ).strip().lower()
+        ]
+    start = (page - 1) * limit
+    paged = filtered[start : start + limit]
+    return APIResponse(
+        message="Admin transactions fetched successfully.",
+        data=[
+            to_admin_transaction_response(
+                transaction,
+                application=application_by_reference.get(transaction.transaction_reference),
+            )
+            for transaction in paged
+        ],
+    )
+
+
+@admin_router.get("/transactions/{transaction_reference}", response_model=APIResponse[AdminTransactionDetailResponse])
+async def get_transaction_detail(
+    transaction_reference: str,
+    engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
+) -> APIResponse[AdminTransactionDetailResponse]:
+    """Return one transaction detail payload for the admin drawer."""
+    transaction = await admin_workflow_service.get_transaction_detail(
+        engine,
+        transaction_reference=transaction_reference,
+    )
+    application = (
+        await engine.find_one(
+            Application,
+            Application.application_reference == transaction.application_snapshot.application_reference,
+        )
+        if transaction.application_snapshot.application_reference
+        else None
+    )
+    return APIResponse(
+        message="Admin transaction detail fetched successfully.",
+        data=to_admin_transaction_detail_response(transaction, application=application),
+    )
+
+
+@admin_router.get("/payments", response_model=APIResponse[list[AdminPaymentResponse]])
+async def list_payments(
+    status: str = Query(default="ALL"),
+    search: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=10, ge=1, le=100),
+    engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
+) -> APIResponse[list[AdminPaymentResponse]]:
+    """List admin-visible payment records with light filtering and pagination."""
+    payments = await admin_workflow_service.list_payments(engine)
+    filtered = [
+        payment
+        for payment in payments
+        if admin_workflow_service.match_payment_status_filter(payment, status)
+    ]
+    if search:
+        needle = search.strip().lower()
+        filtered = [
+            payment
+            for payment in filtered
+            if needle in payment.payment_reference.lower()
+            or needle in payment.main_transaction_reference.lower()
+            or needle in payment.gateway_name.value.lower()
+        ]
+    start = (page - 1) * limit
+    paged = filtered[start : start + limit]
+    return APIResponse(
+        message="Admin payments fetched successfully.",
+        data=[to_admin_payment_response(payment) for payment in paged],
     )
 
 

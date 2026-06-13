@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 
 from odmantic import AIOEngine
 
@@ -72,11 +72,27 @@ class ProviderQuoteService:
         snapshot = ApplicationSnapshot(
             application_reference=request_data.application_reference,
             insurance_type=request_data.insurance_type.value,
-            personal_details=PersonalDetails(**request_data.personal_details.model_dump()),
+            personal_details=PersonalDetails(
+                **{
+                    **request_data.personal_details.model_dump(),
+                    "date_of_birth": datetime.combine(
+                        request_data.personal_details.date_of_birth,
+                        time.min,
+                        tzinfo=timezone.utc,
+                    ),
+                }
+            ),
             health_details=(
-                HealthDetails(**request_data.health_details.model_dump())
+                HealthDetails(
+                    **{
+                        **request_data.health_details.model_dump(exclude={"other_conditions"}),
+                        "other_conditions": ", ".join(request_data.health_details.other_conditions)
+                        if request_data.health_details.other_conditions
+                        else None,
+                    }
+                )
                 if request_data.health_details
-                else None
+                else HealthDetails()
             ),
             coverage_details=CoverageDetails(**request_data.coverage_details.model_dump()),
         )

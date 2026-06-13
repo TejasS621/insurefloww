@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from backend.provider_backend.app.core.apis.schemas.shared import HealthDetailsSchema
 from backend.provider_backend.app.core.models.provider_quote_model import RiskCategory
@@ -23,7 +23,7 @@ class RiskEngine:
     def assess(
         self,
         *,
-        date_of_birth: date,
+        date_of_birth: date | datetime,
         health_details: HealthDetailsSchema | None,
     ) -> RiskAssessment:
         """Calculate a coarse risk score from age and declared health factors."""
@@ -44,7 +44,12 @@ class RiskEngine:
                 score += 20
             if health_details.pre_existing_disease:
                 score += 15
-            score += len(health_details.other_conditions) * 3
+            other_conditions = [
+                item.strip()
+                for item in health_details.other_conditions
+                if isinstance(item, str) and item.strip()
+            ]
+            score += len(other_conditions) * 3
 
         if score < 25:
             category = RiskCategory.LOW

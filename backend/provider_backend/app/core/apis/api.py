@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.provider_backend.app.commons.config import settings
@@ -25,6 +26,8 @@ from backend.provider_backend.app.core.database.database import (
     close_mongo_connection,
     connect_to_mongo,
 )
+from backend.provider_backend.app.core.services.broker_service import broker_service
+from backend.provider_backend.app.core.services.catalog_seeder import seed_catalog
 from backend.provider_backend.app.core.services.service_exceptions import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -34,7 +37,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(_: FastAPI):
     """Manage application startup and shutdown resources."""
     logger.info("Starting %s", settings.app_name)
-    await connect_to_mongo()
+    engine = await connect_to_mongo()
+    await broker_service.ensure_integration_broker(engine)
+    await seed_catalog(engine)
     try:
         yield
     finally:
@@ -48,6 +53,15 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_allowed_origins,
+    allow_origin_regex=settings.cors_allowed_origin_regex,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
