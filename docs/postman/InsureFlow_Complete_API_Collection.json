@@ -1,0 +1,1049 @@
+{
+  "info": {
+    "name": "InsureFlow Complete API Collection",
+    "description": "Complete API collection for InsureFlow project including Main Backend and Provider Backend endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Main Backend",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "Health Check",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{main_backend_url}}/health",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["health"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Authentication",
+          "item": [
+            {
+              "name": "Request Customer OTP",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"mobile_number\": \"+919876543210\"}"
+                },
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/auth/login/otp",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "auth", "login", "otp"]
+                }
+              }
+            },
+            {
+              "name": "Verify Customer OTP",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"mobile_number\": \"+919876543210\", \"otp_code\": \"123456\"}"
+                },
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/auth/login/verify",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "auth", "login", "verify"]
+                }
+              }
+            },
+            {
+              "name": "Admin Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"email\": \"admin@insurefloww.com\", \"password\": \"Admin@12345\"}"
+                },
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/auth/admin/login",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "auth", "admin", "login"]
+                }
+              }
+            },
+            {
+              "name": "Admin Login Verify",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"email\": \"admin@insurefloww.com\", \"otp_code\": \"123456\"}"
+                },
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/auth/admin/login/verify",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "auth", "admin", "login", "verify"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Applications",
+          "item": [
+            {
+              "name": "Create Application",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{customer_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"personal_details\": {\"first_name\": \"John\", \"last_name\": \"Doe\", \"email\": \"john@example.com\", \"mobile_number\": \"+919876543210\", \"date_of_birth\": \"1990-01-15\", \"gender\": \"MALE\", \"marital_status\": \"SINGLE\"}}"
+                },
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/applications",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "applications"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quotes",
+          "item": [
+            {
+              "name": "Select Quote",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{customer_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"selected_addons\": []}"
+                },
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/quotes/select/{{quote_id}}",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "quotes", "select", "{{quote_id}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payments",
+          "item": [
+            {
+              "name": "Initiate Payment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{customer_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"selected_payment_method\": \"CREDIT_CARD\"}"
+                },
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/payments/initiate/{{transaction_reference}}",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "payments", "initiate", "{{transaction_reference}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Policies",
+          "item": [
+            {
+              "name": "List My Policies",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{customer_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/policies/me",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "policies", "me"]
+                }
+              }
+            },
+            {
+              "name": "Get Policy",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{customer_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/policies/{{policy_number}}",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "policies", "{{policy_number}}"]
+                }
+              }
+            },
+            {
+              "name": "View Policy Document",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{customer_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/policies/{{policy_number}}/view",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "policies", "{{policy_number}}", "view"]
+                }
+              }
+            },
+            {
+              "name": "Download Policy Document",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{customer_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/policies/{{policy_number}}/download",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "policies", "{{policy_number}}", "download"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Support Tickets",
+          "item": [
+            {
+              "name": "Create Ticket",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{customer_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"subject\": \"Issue with policy\", \"description\": \"I have an issue with my policy\"}"
+                },
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/tickets",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "tickets"]
+                }
+              }
+            },
+            {
+              "name": "List My Tickets",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{customer_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/tickets/me",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "tickets", "me"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Brokers",
+              "item": [
+                {
+                  "name": "Register Broker",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"broker_name\": \"ABC Insurance\", \"broker_code\": \"ABC001\", \"callback_url\": \"https://broker.example.com/callback\", \"webhook_url\": \"https://broker.example.com/webhook\"}"
+                    },
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/brokers",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "brokers"]
+                    }
+                  }
+                },
+                {
+                  "name": "List Brokers",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/brokers",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "brokers"]
+                    }
+                  }
+                },
+                {
+                  "name": "Update Broker Status",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"status\": \"ACTIVE\", \"reason\": \"Broker verification completed\"}"
+                    },
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/brokers/{{broker_code}}/status",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "brokers", "{{broker_code}}", "status"]
+                    }
+                  }
+                },
+                {
+                  "name": "Rotate Broker Key",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"initiated_by\": \"admin@insurefloww.com\", \"reason\": \"Key rotation scheduled\"}"
+                    },
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/brokers/{{broker_code}}/rotate-key",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "brokers", "{{broker_code}}", "rotate-key"]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Tickets",
+              "item": [
+                {
+                  "name": "List Tickets",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/tickets",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "tickets"]
+                    }
+                  }
+                },
+                {
+                  "name": "Assign Ticket",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"assigned_to_admin_id\": \"admin_id_123\"}"
+                    },
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/tickets/{{ticket_reference}}/assignment",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "tickets", "{{ticket_reference}}", "assignment"]
+                    }
+                  }
+                },
+                {
+                  "name": "Update Ticket Status",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"status\": \"RESOLVED\", \"admin_response\": \"Your issue has been resolved.\"}"
+                    },
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/tickets/{{ticket_reference}}/status",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "tickets", "{{ticket_reference}}", "status"]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Applications",
+              "item": [
+                {
+                  "name": "List Applications",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/applications",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "applications"]
+                    }
+                  }
+                },
+                {
+                  "name": "Review Application",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"review_status\": \"APPROVED\", \"review_notes\": \"Application verified and approved\"}"
+                    },
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/applications/{{application_reference}}/review",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "applications", "{{application_reference}}", "review"]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Policies",
+              "item": [
+                {
+                  "name": "List Policies",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/policies",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "policies"]
+                    }
+                  }
+                },
+                {
+                  "name": "Update Policy Status",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{admin_token}}"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\"status\": \"ACTIVE\", \"reason\": \"Policy activated\"}"
+                    },
+                    "url": {
+                      "raw": "{{main_backend_url}}/api/v1/admin/policies/{{policy_number}}/status",
+                      "host": ["{{main_backend_url}}"],
+                      "path": ["api", "v1", "admin", "policies", "{{policy_number}}", "status"]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Provider Sync Webhook",
+          "item": [
+            {
+              "name": "Receive Provider Sync",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{broker_api_key}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"event_type\": \"POLICY_ISSUED\", \"reference_id\": \"payment_ref_123\", \"payload\": {}}"
+                },
+                "url": {
+                  "raw": "{{main_backend_url}}/api/v1/provider-sync/webhook",
+                  "host": ["{{main_backend_url}}"],
+                  "path": ["api", "v1", "provider-sync", "webhook"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Provider Backend",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "Health Check",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{provider_backend_url}}/health",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["health"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Provider Authentication",
+          "item": [
+            {
+              "name": "Provider Admin Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"email\": \"provider-admin@insurefloww.com\", \"password\": \"Provider@12345\"}"
+                },
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/auth/login",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "auth", "login"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Broker Management",
+          "item": [
+            {
+              "name": "Register Broker",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{provider_admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"broker_name\": \"XYZ Insurance Broker\", \"broker_code\": \"XYZ001\", \"callback_url\": \"https://broker.example.com/callback\", \"webhook_url\": \"https://broker.example.com/webhook\"}"
+                },
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/brokers/register",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "brokers", "register"]
+                }
+              }
+            },
+            {
+              "name": "List Brokers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{provider_admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/brokers",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "brokers"]
+                }
+              }
+            },
+            {
+              "name": "Update Broker Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{provider_admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"status\": \"ACTIVE\", \"reason\": \"Broker approved\"}"
+                },
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/brokers/{{broker_code}}/status",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "brokers", "{{broker_code}}", "status"]
+                }
+              }
+            },
+            {
+              "name": "Rotate Broker Key",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{provider_admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"rotated_by\": \"provider-admin@insurefloww.com\", \"reason\": \"Scheduled key rotation\"}"
+                },
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/brokers/{{broker_code}}/rotate-key",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "brokers", "{{broker_code}}", "rotate-key"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quotes",
+          "item": [
+            {
+              "name": "Generate Quotes",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{broker_api_key}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"transaction_reference\": \"txn_123\", \"personal_details\": {\"first_name\": \"John\", \"last_name\": \"Doe\", \"email\": \"john@example.com\", \"mobile_number\": \"+919876543210\"}, \"insurance_details\": {}}"
+                },
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/quotes/generate",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "quotes", "generate"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Policies",
+          "item": [
+            {
+              "name": "Get Policy",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{provider_admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/policies/{{policy_number}}",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "policies", "{{policy_number}}"]
+                }
+              }
+            },
+            {
+              "name": "View Policy Document",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{provider_admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/policies/{{policy_number}}/document",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "policies", "{{policy_number}}", "document"]
+                }
+              }
+            },
+            {
+              "name": "Download Policy Document",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{provider_admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/policies/{{policy_number}}/download",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "policies", "{{policy_number}}", "download"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payments",
+          "item": [
+            {
+              "name": "Create Payment Session",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{broker_api_key}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"payment_reference\": \"pay_123\", \"gateway_order_id\": \"order_123\", \"amount\": 5000.00, \"currency\": \"INR\"}"
+                },
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/payments/create-session",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "payments", "create-session"]
+                }
+              }
+            },
+            {
+              "name": "Create Mock Payment Session",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{broker_api_key}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"payment_reference\": \"pay_123\", \"amount\": 5000.00, \"currency\": \"INR\"}"
+                },
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/payments/create",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "payments", "create"]
+                }
+              }
+            },
+            {
+              "name": "Mock Razorpay Checkout Page",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{provider_backend_url}}/mock-razorpay/pay/{{payment_reference}}",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["mock-razorpay", "pay", "{{payment_reference}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Webhooks",
+          "item": [
+            {
+              "name": "Payment Success Webhook",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"payment_reference\": \"pay_123\", \"gateway_payment_id\": \"rzp_123\", \"payment_status\": \"SUCCESS\", \"timestamp\": \"2024-01-01T12:00:00Z\"}"
+                },
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/webhooks/payment-success",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "webhooks", "payment-success"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Synchronization",
+          "item": [
+            {
+              "name": "Dispatch Provider Sync",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{provider_admin_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"payment_reference\": \"pay_123\"}"
+                },
+                "url": {
+                  "raw": "{{provider_backend_url}}/api/v1/provider/sync/dispatch",
+                  "host": ["{{provider_backend_url}}"],
+                  "path": ["api", "v1", "provider", "sync", "dispatch"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "main_backend_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "provider_backend_url",
+      "value": "http://127.0.0.1:8001",
+      "type": "string"
+    },
+    {
+      "key": "customer_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "provider_admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "broker_api_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "quote_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transaction_reference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "policy_number",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "broker_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ticket_reference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "application_reference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "payment_reference",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

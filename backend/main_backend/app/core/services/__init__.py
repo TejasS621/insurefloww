@@ -8,6 +8,7 @@ from .provider_sync_service import provider_sync_service
 from .quote_service import quote_service
 from .service_exceptions import (
     AuthenticationServiceError,
+    AuthorizationServiceError,
     ConflictServiceError,
     IntegrationServiceError,
     NotFoundServiceError,

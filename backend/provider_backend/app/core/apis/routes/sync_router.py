@@ -9,6 +9,7 @@ from backend.provider_backend.app.core.apis.routes._mappers import (
     to_retry_processing_response,
     to_sync_status_response,
 )
+from backend.provider_backend.app.core.apis.routes.dependencies import get_current_provider_admin_principal
 from backend.provider_backend.app.core.apis.schemas.requests.sync_request import (
     ProviderSyncDispatchRequest,
     RetryProcessingRequest,
@@ -34,6 +35,7 @@ sync_router = APIRouter(prefix="/api/v1/provider/sync", tags=["Provider Sync"])
 async def dispatch_provider_sync(
     request_data: ProviderSyncDispatchRequest,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> APIResponse[ProviderSyncStatusResponse]:
     """Dispatch a provider synchronization event for a processed payment."""
     retry_record = await provider_sync_service.dispatch_policy_issued_for_payment(
@@ -53,6 +55,7 @@ async def dispatch_provider_sync(
 async def process_due_retries(
     request_data: RetryProcessingRequest,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> APIResponse[RetryProcessingResponse]:
     """Process queued provider synchronization retries that are due."""
     result = await provider_sync_service.process_due_retries(
@@ -71,6 +74,7 @@ async def process_due_retries(
 )
 async def list_sync_retries(
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> APIResponse[list[ProviderSyncStatusResponse]]:
     """List all provider synchronization retry records."""
     records = await provider_sync_service.list_retry_records(engine)

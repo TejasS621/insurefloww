@@ -10,6 +10,7 @@ from .quote_service import provider_quote_service
 from .risk_engine import risk_engine
 from .service_exceptions import (
     AuthenticationServiceError,
+    AuthorizationServiceError,
     ConflictServiceError,
     IntegrationServiceError,
     NotFoundServiceError,

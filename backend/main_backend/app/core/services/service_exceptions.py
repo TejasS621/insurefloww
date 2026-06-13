@@ -33,6 +33,13 @@ class AuthenticationServiceError(ServiceError):
         super().__init__(message, code="authentication_error", status_code=401)
 
 
+class AuthorizationServiceError(ServiceError):
+    """Raised when an authenticated actor lacks permission for an action."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="authorization_error", status_code=403)
+
+
 class NotFoundServiceError(ServiceError):
     """Raised when a requested domain object cannot be found."""
 

@@ -17,7 +17,6 @@ from backend.main_backend.app.core.apis.routes._mappers import (
 )
 from backend.main_backend.app.core.apis.routes.dependencies import (
     get_current_admin_actor,
-    get_optional_admin_email,
 )
 from backend.main_backend.app.core.apis.schemas.requests.admin_request import (
     ApplicationReviewRequest,
@@ -55,7 +54,7 @@ admin_router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 async def register_broker(
     request_data: BrokerRegistrationRequest,
     engine: AIOEngine = Depends(get_database),
-    admin_email: str | None = Depends(get_optional_admin_email),
+    actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[BrokerRegistryResponse]:
     """Register a broker through the admin orchestration API."""
     broker, _ = await broker_service.register_broker(
@@ -65,7 +64,7 @@ async def register_broker(
             broker_code=request_data.broker_code,
             callback_url=request_data.callback_url,
             webhook_url=request_data.webhook_url,
-            created_by_admin=admin_email,
+            created_by_admin=actor_id,
         ),
     )
     return APIResponse(
@@ -77,6 +76,7 @@ async def register_broker(
 @admin_router.get("/brokers", response_model=APIResponse[list[BrokerRegistryResponse]])
 async def list_brokers(
     engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[BrokerRegistryResponse]]:
     """List registered brokers."""
     brokers = await broker_service.list_brokers(engine)
@@ -91,6 +91,7 @@ async def update_broker_status(
     broker_code: str,
     request_data: BrokerStatusUpdateRequest,
     engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[BrokerRegistryResponse]:
     """Update the lifecycle status of a broker."""
     broker = await broker_service.update_broker_status(
@@ -112,13 +113,14 @@ async def rotate_broker_key(
     broker_code: str,
     request_data: BrokerKeyRotationRequest,
     engine: AIOEngine = Depends(get_database),
+    actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[BrokerRegistryResponse]:
     """Rotate broker credentials through the admin API."""
     broker, _ = await broker_service.rotate_broker_key(
         engine,
         broker_code=broker_code,
         request_data=ProviderKeyRotationRequest(
-            rotated_by=request_data.initiated_by,
+            rotated_by=request_data.initiated_by or actor_id,
             reason=request_data.reason,
         ),
     )
@@ -131,6 +133,7 @@ async def rotate_broker_key(
 @admin_router.get("/tickets", response_model=APIResponse[list[AdminTicketResponse]])
 async def list_tickets(
     engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AdminTicketResponse]]:
     """List all customer support tickets for administrative review."""
     tickets = await admin_workflow_service.list_tickets(engine)
@@ -183,6 +186,7 @@ async def update_ticket_status(
 @admin_router.get("/applications", response_model=APIResponse[list[AdminApplicationResponse]])
 async def list_applications(
     engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AdminApplicationResponse]]:
     """List all insurance applications for administrative review."""
     applications = await admin_workflow_service.list_applications(engine)
@@ -215,6 +219,7 @@ async def review_application(
 @admin_router.get("/underwriting/reviews", response_model=APIResponse[list[UnderwritingReviewResponse]])
 async def list_underwriting_reviews(
     engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[UnderwritingReviewResponse]]:
     """List applications that require or merit manual underwriting review."""
     review_items = await admin_workflow_service.list_underwriting_reviews(engine)
@@ -254,6 +259,7 @@ async def process_underwriting_review(
 @admin_router.get("/policies", response_model=APIResponse[list[AdminPolicyResponse]])
 async def list_policies(
     engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AdminPolicyResponse]]:
     """List all issued policies for administrative management."""
     policies = await admin_workflow_service.list_policies(engine)
@@ -286,6 +292,7 @@ async def update_policy_status(
 @admin_router.get("/dashboard", response_model=APIResponse[DashboardStatisticsResponse])
 async def get_dashboard(
     engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[DashboardStatisticsResponse]:
     """Return high-level dashboard metrics for admin operational monitoring."""
     stats = await admin_workflow_service.get_dashboard_statistics(engine)
@@ -322,6 +329,7 @@ async def get_dashboard(
 async def list_audit_logs(
     limit: int = Query(default=100, ge=1, le=500),
     engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AuditLogResponse]]:
     """List the newest audit log records captured for admin workflow actions."""
     logs = await admin_workflow_service.list_audit_logs(engine, limit=limit)

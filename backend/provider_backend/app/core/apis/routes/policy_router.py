@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from odmantic import AIOEngine
 
 from backend.provider_backend.app.core.apis.routes._mappers import to_provider_policy_response
+from backend.provider_backend.app.core.apis.routes.dependencies import get_current_provider_admin_principal
 from backend.provider_backend.app.core.apis.schemas.responses.common_response import APIResponse
 from backend.provider_backend.app.core.apis.schemas.responses.policy_response import (
     ProviderPolicyResponse,
@@ -24,6 +25,7 @@ policy_router = APIRouter(prefix="/api/v1/provider/policies", tags=["Provider Po
 async def get_policy(
     policy_number: str,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> APIResponse[ProviderPolicyResponse]:
     """Fetch a provider-issued policy by policy number."""
     policy = await provider_policy_service.get_policy_by_number(
@@ -42,6 +44,7 @@ async def get_policy(
 async def view_policy_document(
     policy_number: str,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> FileResponse:
     """Render an issued provider policy PDF inline for browser viewing."""
     policy = await provider_policy_service.get_policy_by_number(
@@ -69,6 +72,7 @@ async def view_policy_document(
 async def download_policy_document(
     policy_number: str,
     engine: AIOEngine = Depends(get_database),
+    _: object = Depends(get_current_provider_admin_principal),
 ) -> FileResponse:
     """Download an issued provider policy PDF as an attachment."""
     policy = await provider_policy_service.get_policy_by_number(

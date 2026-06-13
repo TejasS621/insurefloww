@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from odmantic import AIOEngine
 
-from .service_exceptions import IntegrationServiceError
+from backend.provider_backend.app.commons.config import settings
+
+from .service_exceptions import AuthenticationServiceError
 
 
 class ProviderAuthService:
@@ -12,21 +14,22 @@ class ProviderAuthService:
 
     async def authenticate_provider_admin(
         self,
-        _: AIOEngine,
+        engine: AIOEngine,
         *,
         email: str,
         password: str,
-    ) -> None:
-        """Validate provider-admin credentials.
+    ) -> str:
+        """Validate configured provider-admin credentials and return the identity.
 
-        This workflow intentionally remains explicit rather than silently
-        succeeding because the branch does not yet contain provider-admin
-        persistence or password-hashing infrastructure.
+        Provider-admin login is configuration-backed in this branch so JWT
+        authorization can be enabled without introducing a new user store.
         """
-        _ = (email, password)
-        raise IntegrationServiceError(
-            "Provider admin authentication is not available until provider-admin persistence is implemented."
-        )
+        _ = engine
+        if email.strip().lower() != settings.provider_admin_email.strip().lower():
+            raise AuthenticationServiceError("The supplied provider-admin credentials are invalid.")
+        if password != settings.provider_admin_password:
+            raise AuthenticationServiceError("The supplied provider-admin credentials are invalid.")
+        return settings.provider_admin_email
 
 
 provider_auth_service = ProviderAuthService()

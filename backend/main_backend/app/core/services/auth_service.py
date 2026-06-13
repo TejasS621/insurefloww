@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from odmantic import AIOEngine
 
 from backend.main_backend.app.core.models.user_model import OTPPurpose, OTPToken
+from backend.main_backend.app.commons.config import settings
 
 from .service_exceptions import AuthenticationServiceError, NotFoundServiceError
 
@@ -28,6 +29,30 @@ class AuthService:
     """Encapsulate OTP-centric authentication helper workflows."""
 
     OTP_EXPIRY_MINUTES = 10
+
+    async def authenticate_admin_credentials(self, *, email: str, password: str) -> str:
+        """Validate the configured admin credentials and return the admin identity.
+
+        The admin login is environment-backed for now so JWT protection can be
+        enabled without introducing a new persistence model in this branch.
+        """
+        if email.strip().lower() != settings.admin_email.strip().lower():
+            raise AuthenticationServiceError("The supplied admin credentials are invalid.")
+        if password != settings.admin_password:
+            raise AuthenticationServiceError("The supplied admin credentials are invalid.")
+        return settings.admin_email
+
+    async def verify_admin_otp(self, *, email: str, otp_code: str) -> str:
+        """Validate the configured admin OTP challenge and return the admin identity.
+
+        This keeps the existing compatibility endpoint usable while shifting the
+        actual authenticated session representation to a signed JWT access token.
+        """
+        if email.strip().lower() != settings.admin_email.strip().lower():
+            raise AuthenticationServiceError("The supplied admin verification details are invalid.")
+        if otp_code != settings.admin_otp_code:
+            raise AuthenticationServiceError("The supplied admin verification details are invalid.")
+        return settings.admin_email
 
     async def request_customer_otp(
         self,

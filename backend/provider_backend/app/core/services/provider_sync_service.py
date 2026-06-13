@@ -129,6 +129,10 @@ class ProviderSyncService:
                 response = await client.post(
                     settings.main_backend_sync_url,
                     json=payload,
+                    headers={
+                        "X-Broker-Code": settings.integration_broker_code,
+                        "X-Broker-Api-Key": settings.integration_broker_api_key,
+                    },
                 )
                 response.raise_for_status()
         except httpx.HTTPError as exc:

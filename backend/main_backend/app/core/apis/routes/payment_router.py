@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends
 from odmantic import AIOEngine
 
 from backend.main_backend.app.core.apis.routes._mappers import to_payment_initiation_response
+from backend.main_backend.app.core.apis.routes.dependencies import get_current_user_id
 from backend.main_backend.app.core.apis.schemas.requests.payment_request import (
     PaymentInitiationRequest,
 )
@@ -16,6 +19,7 @@ from backend.main_backend.app.core.models.application_model import Application
 from backend.main_backend.app.core.models.transaction_model import Transaction
 from backend.main_backend.app.core.services.payment_service import payment_service
 from backend.main_backend.app.core.services.service_exceptions import (
+    AuthorizationServiceError,
     IntegrationServiceError,
     NotFoundServiceError,
 )
@@ -28,6 +32,7 @@ async def initiate_payment(
     transaction_reference: str,
     request_data: PaymentInitiationRequest | None = None,
     engine: AIOEngine = Depends(get_database),
+    user_id: str = Depends(get_current_user_id),
 ) -> APIResponse[PaymentInitiationResponse]:
     """Create a provider-hosted mock payment session for the selected customer quote."""
     transaction = await engine.find_one(
@@ -49,6 +54,12 @@ async def initiate_payment(
         raise IntegrationServiceError(
             "Customer application context is missing for the supplied transaction reference."
         )
+    if application.user_id is None:
+        application.user_id = user_id
+        application.updated_at = datetime.now(timezone.utc)
+        await engine.save(application)
+    elif application.user_id != user_id:
+        raise AuthorizationServiceError("You are not allowed to initiate payment for this transaction.")
 
     provider_session = await payment_service.request_provider_hosted_payment_session(
         transaction_reference=transaction_reference,

@@ -33,6 +33,13 @@ class AuthenticationServiceError(ServiceError):
         super().__init__(message, code="authentication_error", status_code=401)
 
 
+class AuthorizationServiceError(ServiceError):
+    """Raised when an authenticated provider actor lacks permission."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="authorization_error", status_code=403)
+
+
 class NotFoundServiceError(ServiceError):
     """Raised when a required record cannot be located."""
 

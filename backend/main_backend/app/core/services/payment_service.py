@@ -61,7 +61,14 @@ class PaymentService:
 
         try:
             async with httpx.AsyncClient(timeout=settings.provider_request_timeout_seconds) as client:
-                response = await client.post(settings.provider_payment_create_url, json=payload)
+                response = await client.post(
+                    settings.provider_payment_create_url,
+                    json=payload,
+                    headers={
+                        "X-Broker-Code": settings.integration_broker_code,
+                        "X-Broker-Api-Key": settings.integration_broker_api_key,
+                    },
+                )
         except httpx.HTTPError as exc:
             raise IntegrationServiceError(
                 "Unable to reach the provider backend to create a payment session."
