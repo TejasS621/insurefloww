@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   ListOrdered,
+  LogOut,
   Shield,
   UserRound,
 } from "lucide-react";
@@ -243,6 +244,34 @@ export default function App() {
     navigateCustomerScreen("login");
   };
 
+  const handleCustomerLogout = () => {
+    authStore.clear("customer");
+    resetCustomerAuthFlow();
+    setCustomerMobileNumber("");
+    setFormError("");
+    setFieldErrors({});
+    setQuotes([]);
+    setQuotesError("");
+    setQuotesLoading(false);
+    setResumedApplication(null);
+    setTransactionReference(null);
+    setPaymentSession(null);
+    setPaymentBreakdown(null);
+    setPaymentStatus("idle");
+    setPaymentError("");
+    setApplicationsState({ loading: false, data: [] });
+    setPoliciesState({ loading: false, data: [] });
+    setTicketsState({ loading: false, data: [] });
+    setTicketSubmitError("");
+    navigateCustomerScreen("landing", { replace: true });
+  };
+
+  const handleAdminLogout = () => {
+    authStore.clear("admin");
+    setAdminScreen("dashboard");
+    navigatePortalMode("admin", { replace: true });
+  };
+
   const customerNavItems = useMemo(
     () => [
       {
@@ -290,6 +319,22 @@ export default function App() {
     [customerScreen, customerToken],
   );
 
+  const customerMobileMenuItems = useMemo(
+    () => [
+      ...customerNavItems,
+      ...(customerToken
+        ? [
+            {
+              label: "Logout",
+              icon: LogOut,
+              onClick: handleCustomerLogout,
+            },
+          ]
+        : []),
+    ],
+    [customerNavItems, customerToken],
+  );
+
   const adminNavItems = useMemo(
     () => [
       { label: "Dashboard", icon: LayoutDashboard, active: adminScreen === "dashboard", onClick: () => navigateAdminScreen("dashboard") },
@@ -300,6 +345,18 @@ export default function App() {
       { label: "Tickets", icon: ClipboardList, active: adminScreen === "tickets", onClick: () => navigateAdminScreen("tickets") },
     ],
     [adminScreen],
+  );
+
+  const adminMobileMenuItems = useMemo(
+    () => [
+      ...adminNavItems,
+      {
+        label: "Logout",
+        icon: LogOut,
+        onClick: handleAdminLogout,
+      },
+    ],
+    [adminNavItems],
   );
 
   const customerDisplayName = useMemo(() => {
@@ -625,6 +682,7 @@ export default function App() {
       <LayoutShell
         navProps={{
           notificationCount: 4,
+          mobileMenuItems: adminMobileMenuItems,
           rightSlot: (
             <>
               <StatusBadge status="admin">Admin</StatusBadge>
@@ -634,6 +692,10 @@ export default function App() {
               <button className="if-avatar-button" type="button" aria-label="Open admin menu">
                 AD
               </button>
+              <Button onClick={handleAdminLogout} variant="ghost">
+                <LogOut size={16} />
+                Logout
+              </Button>
               <Button onClick={() => navigatePortalMode("customer")} variant="ghost">
                 Customer
               </Button>
@@ -659,10 +721,11 @@ export default function App() {
 
   return (
     <LayoutShell
-      navProps={{
-        notificationCount: customerToken ? 2 : undefined,
-        rightSlot: (
-          <>
+        navProps={{
+          notificationCount: customerToken ? 2 : undefined,
+          mobileMenuItems: customerMobileMenuItems,
+          rightSlot: (
+            <>
             <Button onClick={() => navigatePortalMode("admin")} variant="ghost">
               Admin
             </Button>
@@ -674,6 +737,10 @@ export default function App() {
                 <button className="if-avatar-button" type="button" aria-label="Open user menu">
                   {customerInitials}
                 </button>
+                <Button onClick={handleCustomerLogout} variant="ghost">
+                  <LogOut size={16} />
+                  Logout
+                </Button>
               </>
             ) : (
               <Button

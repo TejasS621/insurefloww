@@ -16,6 +16,7 @@ interface LayoutShellProps {
   navProps?: {
     notificationCount?: number;
     rightSlot?: ReactNode;
+    mobileMenuItems?: NavItem[];
   };
   sidebarProps?: {
     title: string;
@@ -44,8 +45,8 @@ export function LayoutShell({
   }, []);
 
   const mobileItems = useMemo(
-    () => sidebarProps?.items ?? bottomNavProps?.items ?? [],
-    [bottomNavProps?.items, sidebarProps?.items],
+    () => navProps?.mobileMenuItems ?? sidebarProps?.items ?? bottomNavProps?.items ?? [],
+    [bottomNavProps?.items, navProps?.mobileMenuItems, sidebarProps?.items],
   );
 
   return (
