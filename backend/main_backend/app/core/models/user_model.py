@@ -44,3 +44,15 @@ class OTPToken(Model):
 
     model_config = ConfigDict(collection="otp_tokens", extra="forbid")
 
+
+class AdminOTPToken(Model):
+    email: str = Field(..., min_length=5, max_length=320)
+    otp_code_hash: str = Field(...)
+    is_used: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc) + timedelta(minutes=10)
+    )
+
+    model_config = ConfigDict(collection="admin_otp_tokens", extra="forbid")
+

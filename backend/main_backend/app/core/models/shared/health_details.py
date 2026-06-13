@@ -12,5 +12,5 @@ class HealthDetails(EmbeddedModel):
     blood_pressure: bool = Field(default=False)
     heart_ailments: bool = Field(default=False)
     pre_existing_disease: bool = Field(default=False)
-    other_conditions: list[str] = Field(default_factory=list)
+    other_conditions: str | None = Field(default=None)
 

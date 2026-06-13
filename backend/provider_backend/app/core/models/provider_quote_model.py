@@ -36,7 +36,7 @@ class ProviderQuote(Model):
     risk_score: float | None = Field(default=None, ge=0)
     risk_category: RiskCategory | None = Field(default=None)
     available_addons: list[dict[str, object]] = Field(default_factory=list)
-    application_snapshot: ApplicationSnapshot | None = Field(default=None)
+    application_snapshot: ApplicationSnapshot = Field(...)
     status: ProviderQuoteStatus = Field(default=ProviderQuoteStatus.GENERATED)
     expires_at: datetime | None = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

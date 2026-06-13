@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from odmantic import AIOEngine
 
-from backend.provider_backend.app.core.apis.routes._helpers import raise_not_implemented
 from backend.provider_backend.app.core.apis.schemas.requests.webhook_request import (
     PaymentSuccessWebhookRequest,
 )
@@ -12,13 +12,23 @@ from backend.provider_backend.app.core.apis.schemas.responses.common_response im
 from backend.provider_backend.app.core.apis.schemas.responses.webhook_response import (
     WebhookAcknowledgementResponse,
 )
+from backend.provider_backend.app.core.database.database import get_database
+from backend.provider_backend.app.core.services.webhook_service import webhook_service
 
 webhook_router = APIRouter(prefix="/api/v1/provider/webhooks", tags=["Provider Webhooks"])
 
 
 @webhook_router.post("/payment-success", response_model=APIResponse[WebhookAcknowledgementResponse])
 async def payment_success_webhook(
-    _: PaymentSuccessWebhookRequest,
+    request_data: PaymentSuccessWebhookRequest,
+    engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[WebhookAcknowledgementResponse]:
     """Receive and validate payment success callbacks."""
-    raise_not_implemented("Provider payment success webhook")
+    await webhook_service.handle_payment_success(engine, request_data)
+    return APIResponse(
+        message="Payment success webhook processed successfully.",
+        data=WebhookAcknowledgementResponse(
+            event_type="PAYMENT_SUCCESS",
+            processing_status="PROCESSED",
+        ),
+    )
