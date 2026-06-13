@@ -7,6 +7,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  loading?: boolean;
   iconOnly?: boolean;
   ariaLabel?: string;
 }
@@ -19,6 +20,7 @@ export function Button({
   children,
   variant = "primary",
   size = "default",
+  loading = false,
   iconOnly = false,
   ariaLabel,
   className = "",
@@ -36,8 +38,16 @@ export function Button({
     .join(" ");
 
   return (
-    <button {...props} aria-label={ariaLabel} className={classes} type={type}>
-      {children}
+    <button
+      {...props}
+      aria-busy={loading}
+      aria-label={ariaLabel}
+      className={classes}
+      disabled={props.disabled || loading}
+      type={type}
+    >
+      {loading ? <span className="if-button-spinner" /> : null}
+      <span className={loading ? "if-button-loading-text" : ""}>{children}</span>
     </button>
   );
 }

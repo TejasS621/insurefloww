@@ -1,10 +1,14 @@
 import { Check, Copy, KeyRound } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "../../components/ui/Button";
+import { ErrorCard } from "../../components/ui/ErrorCard";
 import { Modal } from "../../components/ui/Modal";
-import { TextInput } from "../../components/ui/TextInput";
+import { Skeleton } from "../../components/ui/Skeleton";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { TextInput } from "../../components/ui/TextInput";
+import { adminApi, type BrokerSummary } from "../../services/api/admin";
+import { normalizeApiError } from "../../utils/apiErrors";
 
 type BrokerModalState =
   | "closed"
@@ -15,16 +19,95 @@ type BrokerModalState =
   | "rotateKey";
 
 /**
- * BrokerManagementScreen covers broker registration and key rotation.
- * It keeps destructive actions behind confirmations and never shows full keys by default.
+ * BrokerManagementScreen now loads brokers from the API and applies optimistic broker updates.
+ * Key reveal content is transient and cleared when the modal closes.
  */
 export function BrokerManagementScreen() {
   const [modalState, setModalState] = useState<BrokerModalState>("closed");
   const [copied, setCopied] = useState(false);
+  const [brokers, setBrokers] = useState<BrokerSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [transientApiKey, setTransientApiKey] = useState<string | null>(null);
+  const [selectedBrokerCode, setSelectedBrokerCode] = useState<string | null>(null);
+  const [formValues, setFormValues] = useState({
+    brokerName: "",
+    brokerCode: "",
+    callbackUrl: "",
+    webhookUrl: "",
+  });
+
+  const loadBrokers = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await adminApi.listBrokers();
+      setBrokers(response);
+    } catch (requestError) {
+      setError(normalizeApiError(requestError).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadBrokers();
+  }, []);
+
+  const closeModal = () => {
+    setModalState("closed");
+    setTransientApiKey(null);
+    setSelectedBrokerCode(null);
+  };
 
   const handleCopy = () => {
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRegister = async () => {
+    try {
+      const broker = await adminApi.createBroker({
+        broker_name: formValues.brokerName,
+        broker_code: formValues.brokerCode.toUpperCase(),
+        callback_url: formValues.callbackUrl,
+        webhook_url: formValues.webhookUrl,
+      });
+      setBrokers((current) => [broker, ...current]);
+      setTransientApiKey(broker.api_key ?? "brk_live_****************");
+      setModalState("registerKey");
+    } catch (requestError) {
+      setError(normalizeApiError(requestError).message);
+    }
+  };
+
+  const handleStatusUpdate = async (brokerCode: string, status: "ACTIVE" | "INACTIVE") => {
+    const previous = brokers;
+    setBrokers((current) =>
+      current.map((broker) =>
+        broker.broker_code === brokerCode ? { ...broker, status } : broker,
+      ),
+    );
+    try {
+      await adminApi.updateBrokerStatus(brokerCode, status);
+    } catch (requestError) {
+      setBrokers(previous);
+      setError(normalizeApiError(requestError).message);
+    }
+  };
+
+  const handleRotateKey = async () => {
+    if (!selectedBrokerCode) {
+      return;
+    }
+    try {
+      const broker = await adminApi.rotateBrokerKey(selectedBrokerCode);
+      setTransientApiKey(broker.api_key ?? "brk_live_****************");
+      setModalState("rotateKey");
+      await loadBrokers();
+    } catch (requestError) {
+      setError(normalizeApiError(requestError).message);
+    }
   };
 
   return (
@@ -37,78 +120,109 @@ export function BrokerManagementScreen() {
         <Button onClick={() => setModalState("register")}>Register Broker</Button>
       </section>
 
+      {error ? <ErrorCard message={error} onRetry={() => void loadBrokers()} /> : null}
+
       <section className="if-surface-card">
-        <div className="if-table-wrap">
-          <table className="if-data-table">
-            <thead>
-              <tr>
-                <th>Broker Code</th>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Last Key Rotation</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="if-mono">MAINAPP</td>
-                <td>InsureFlow Main App</td>
-                <td>
-                  <StatusBadge status="issued">Active</StatusBadge>
-                </td>
-                <td>10 Jun 2026</td>
-                <td>12 Jun 2026</td>
-                <td>
-                  <div className="if-table-action-row">
-                    <Button onClick={() => setModalState("rotateConfirm")} variant="ghost">
-                      Rotate Key
-                    </Button>
-                    <button
-                      className="if-link-button if-link-button-danger"
-                      onClick={() => setModalState("deactivateConfirm")}
-                      type="button"
-                    >
-                      Deactivate
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td className="if-mono">BROKX</td>
-                <td>Broker X Partners</td>
-                <td>
-                  <StatusBadge status="cancelled">Inactive</StatusBadge>
-                </td>
-                <td>08 Jun 2026</td>
-                <td>09 Jun 2026</td>
-                <td>
-                  <div className="if-table-action-row">
-                    <Button variant="ghost">Rotate Key</Button>
-                    <button className="if-link-button if-link-button-danger" type="button">
-                      Deactivate
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div className="if-skeleton-stack">
+            <Skeleton height={56} />
+            <Skeleton height={56} />
+            <Skeleton height={56} />
+          </div>
+        ) : brokers.length === 0 ? (
+          <ErrorCard message="No brokers registered yet." />
+        ) : (
+          <div className="if-table-wrap">
+            <table className="if-data-table">
+              <thead>
+                <tr>
+                  <th>Broker Code</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Last Key Rotation</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {brokers.map((broker) => (
+                  <tr key={broker.broker_code}>
+                    <td className="if-mono">{broker.broker_code}</td>
+                    <td>{broker.broker_name}</td>
+                    <td>
+                      <StatusBadge status={broker.status === "ACTIVE" ? "issued" : "cancelled"}>
+                        {broker.status}
+                      </StatusBadge>
+                    </td>
+                    <td>{broker.created_at ? new Date(broker.created_at).toLocaleDateString("en-IN") : "N/A"}</td>
+                    <td>{broker.updated_at ? new Date(broker.updated_at).toLocaleDateString("en-IN") : "N/A"}</td>
+                    <td>
+                      <div className="if-table-action-row">
+                        <Button
+                          onClick={() => {
+                            setSelectedBrokerCode(broker.broker_code);
+                            setModalState("rotateConfirm");
+                          }}
+                          variant="ghost"
+                        >
+                          Rotate Key
+                        </Button>
+                        <button
+                          className="if-link-button if-link-button-danger"
+                          onClick={() => {
+                            setSelectedBrokerCode(broker.broker_code);
+                            setModalState("deactivateConfirm");
+                          }}
+                          type="button"
+                        >
+                          {broker.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {modalState === "register" ? (
         <Modal title="Register new broker" width="wide">
           <div className="if-form-stack">
-            <TextInput label="Broker Name" placeholder="Broker X Partners" />
-            <TextInput label="Broker Code" mono placeholder="BROKERX" />
-            <TextInput label="Callback URL" placeholder="https://broker.example.com/callback" />
-            <TextInput label="Webhook URL" placeholder="https://broker.example.com/webhook" />
+            <TextInput
+              label="Broker Name"
+              onChange={(event) => setFormValues((current) => ({ ...current, brokerName: event.target.value }))}
+              placeholder="Broker X Partners"
+              value={formValues.brokerName}
+            />
+            <TextInput
+              label="Broker Code"
+              mono
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, brokerCode: event.target.value.toUpperCase() }))
+              }
+              placeholder="BROKERX"
+              value={formValues.brokerCode}
+            />
+            <TextInput
+              label="Callback URL"
+              onChange={(event) => setFormValues((current) => ({ ...current, callbackUrl: event.target.value }))}
+              placeholder="https://broker.example.com/callback"
+              value={formValues.callbackUrl}
+            />
+            <TextInput
+              label="Webhook URL"
+              onChange={(event) => setFormValues((current) => ({ ...current, webhookUrl: event.target.value }))}
+              placeholder="https://broker.example.com/webhook"
+              value={formValues.webhookUrl}
+            />
           </div>
           <div className="if-modal-footer">
-            <Button onClick={() => setModalState("closed")} variant="ghost">
+            <Button onClick={closeModal} variant="ghost">
               Cancel
             </Button>
-            <Button onClick={() => setModalState("registerKey")}>Register</Button>
+            <Button onClick={() => void handleRegister()}>Register</Button>
           </div>
         </Modal>
       ) : null}
@@ -120,18 +234,18 @@ export function BrokerManagementScreen() {
           </div>
           <div className="if-key-reveal-card">
             <div className="if-key-row">
-              <div className="if-key-text if-mono">brk_live_****************</div>
+              <div className="if-key-text if-mono">{transientApiKey ?? "brk_live_****************"}</div>
               <Button iconOnly onClick={handleCopy} variant="ghost">
                 {copied ? <Check size={18} /> : <Copy size={18} />}
               </Button>
             </div>
             <div className="if-key-hint">
               <KeyRound size={16} />
-              Reveal only on copy action and store securely.
+              This key is not cached after the modal is closed.
             </div>
           </div>
           <div className="if-modal-footer">
-            <Button onClick={() => setModalState("closed")}>Done</Button>
+            <Button onClick={closeModal}>Done</Button>
           </div>
         </Modal>
       ) : null}
@@ -139,14 +253,13 @@ export function BrokerManagementScreen() {
       {modalState === "rotateConfirm" ? (
         <Modal title="Rotate API key?">
           <p className="if-inline-subtitle">
-            The current key will be invalidated immediately. A new key will be generated and shown
-            once.
+            The current key will be invalidated immediately. A new key will be generated and shown once.
           </p>
           <div className="if-modal-footer">
-            <Button onClick={() => setModalState("closed")} variant="ghost">
+            <Button onClick={closeModal} variant="ghost">
               Cancel
             </Button>
-            <button className="if-button if-button-danger" onClick={() => setModalState("rotateKey")} type="button">
+            <button className="if-button if-button-danger" onClick={() => void handleRotateKey()} type="button">
               Rotate Key
             </button>
           </div>
@@ -154,17 +267,28 @@ export function BrokerManagementScreen() {
       ) : null}
 
       {modalState === "deactivateConfirm" ? (
-        <Modal title="Deactivate broker?">
+        <Modal title="Update broker status?">
           <p className="if-inline-subtitle">
-            The broker integration will be disabled immediately and new requests will be rejected
-            until reactivated.
+            This broker status will change immediately and broker API access will follow the updated lifecycle state.
           </p>
           <div className="if-modal-footer">
-            <Button onClick={() => setModalState("closed")} variant="ghost">
+            <Button onClick={closeModal} variant="ghost">
               Cancel
             </Button>
-            <button className="if-button if-button-danger" onClick={() => setModalState("closed")} type="button">
-              Deactivate
+            <button
+              className="if-button if-button-danger"
+              onClick={() => {
+                if (!selectedBrokerCode) {
+                  return;
+                }
+                const selectedBroker = brokers.find((broker) => broker.broker_code === selectedBrokerCode);
+                const nextStatus = selectedBroker?.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+                closeModal();
+                void handleStatusUpdate(selectedBrokerCode, nextStatus);
+              }}
+              type="button"
+            >
+              Confirm
             </button>
           </div>
         </Modal>

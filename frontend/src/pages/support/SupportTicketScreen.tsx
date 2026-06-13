@@ -2,19 +2,46 @@ import { useState } from "react";
 
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { ErrorCard } from "../../components/ui/ErrorCard";
 import { RadioPillGroup } from "../../components/ui/RadioPillGroup";
 import { SelectField } from "../../components/ui/SelectField";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { TextInput } from "../../components/ui/TextInput";
 import { TextareaField } from "../../components/ui/TextareaField";
+import type { TicketSummary } from "../../services/api/customer";
+
+interface SupportTicketScreenProps {
+  loading: boolean;
+  error?: string;
+  tickets: TicketSummary[];
+  submitError?: string;
+  onRetry: () => void;
+  onSubmit: (payload: {
+    category: string;
+    priority: string;
+    subject: string;
+    message: string;
+  }) => Promise<void>;
+  isSubmitting: boolean;
+}
 
 /**
- * SupportTicketScreen gives customers a create-ticket form and ticket history.
- * It keeps validation inline and reuses the shared form and empty-state primitives.
+ * SupportTicketScreen submits customer tickets and renders API-backed ticket history.
+ * It preserves inline validation and section-level retry behavior for failed fetches.
  */
-export function SupportTicketScreen() {
-  const [priority, setPriority] = useState("medium");
-  const [hasTickets] = useState(true);
+export function SupportTicketScreen({
+  loading,
+  error,
+  tickets,
+  submitError,
+  onRetry,
+  onSubmit,
+  isSubmitting,
+}: SupportTicketScreenProps) {
+  const [priority, setPriority] = useState("MEDIUM");
+  const [category, setCategory] = useState("GENERAL");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
 
   return (
     <div className="if-screen-stack">
@@ -26,29 +53,55 @@ export function SupportTicketScreen() {
               <h2>Raise a ticket</h2>
             </div>
           </div>
+          {submitError ? <ErrorCard message={submitError} /> : null}
           <div className="if-form-stack">
             <SelectField
               label="Category"
+              onChange={(event) => setCategory(event.target.value)}
               options={[
-                { label: "Claim", value: "claim" },
-                { label: "Payment", value: "payment" },
-                { label: "Policy", value: "policy" },
-                { label: "Other", value: "other" },
+                { label: "Claim", value: "GENERAL" },
+                { label: "Payment", value: "PAYMENT" },
+                { label: "Policy", value: "POLICY" },
+                { label: "Other", value: "TECHNICAL" },
               ]}
+              value={category}
             />
             <RadioPillGroup
               label="Priority"
               onChange={setPriority}
               options={[
-                { label: "Low", value: "low" },
-                { label: "Medium", value: "medium" },
-                { label: "High", value: "high" },
+                { label: "Low", value: "LOW" },
+                { label: "Medium", value: "MEDIUM" },
+                { label: "High", value: "HIGH" },
               ]}
               value={priority}
             />
-            <TextInput label="Subject" placeholder="Issue with payment or policy" />
-            <TextareaField label="Message" placeholder="Describe your issue in detail" rows={5} />
-            <Button>Submit</Button>
+            <TextInput
+              label="Subject"
+              onChange={(event) => setSubject(event.target.value)}
+              placeholder="Issue with payment or policy"
+              value={subject}
+            />
+            <TextareaField
+              label="Message"
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Describe your issue in detail"
+              rows={5}
+              value={message}
+            />
+            <Button
+              loading={isSubmitting}
+              onClick={() =>
+                void onSubmit({
+                  category,
+                  priority,
+                  subject,
+                  message,
+                })
+              }
+            >
+              Submit
+            </Button>
           </div>
         </div>
       </section>
@@ -61,28 +114,27 @@ export function SupportTicketScreen() {
           </div>
         </div>
 
-        {hasTickets ? (
+        {loading ? (
+          <div className="if-skeleton-stack">
+            <div className="if-skeleton" style={{ height: 72 }} />
+            <div className="if-skeleton" style={{ height: 72 }} />
+          </div>
+        ) : error ? (
+          <ErrorCard message={error} onRetry={onRetry} />
+        ) : tickets.length > 0 ? (
           <div className="if-ticket-stack">
-            <div className="if-ticket-row">
-              <div>
-                <p className="if-mono">TKT-20260613-101</p>
-                <h3>Unable to download policy PDF</h3>
+            {tickets.map((ticket) => (
+              <div className="if-ticket-row" key={ticket.ticket_reference}>
+                <div>
+                  <p className="if-mono">{ticket.ticket_reference}</p>
+                  <h3>{ticket.subject}</h3>
+                </div>
+                <div className="if-ticket-meta">
+                  <StatusBadge status="processing">{ticket.status}</StatusBadge>
+                  <span>Last updated {new Date(ticket.updated_at).toLocaleDateString("en-IN")}</span>
+                </div>
               </div>
-              <div className="if-ticket-meta">
-                <StatusBadge status="processing">Open</StatusBadge>
-                <span>Last updated 10 mins ago</span>
-              </div>
-            </div>
-            <div className="if-ticket-row">
-              <div>
-                <p className="if-mono">TKT-20260609-044</p>
-                <h3>Need clarification on premium breakup</h3>
-              </div>
-              <div className="if-ticket-meta">
-                <StatusBadge status="pending">Pending</StatusBadge>
-                <span>Last updated yesterday</span>
-              </div>
-            </div>
+            ))}
           </div>
         ) : (
           <EmptyState

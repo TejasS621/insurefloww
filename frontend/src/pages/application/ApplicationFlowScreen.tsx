@@ -1,26 +1,38 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "../../components/ui/Button";
+import { ErrorCard } from "../../components/ui/ErrorCard";
 import { OTPInput } from "../../components/ui/OTPInput";
 import { ProgressStepper } from "../../components/ui/ProgressStepper";
 import { RadioPillGroup } from "../../components/ui/RadioPillGroup";
 import { SelectField } from "../../components/ui/SelectField";
 import { TextInput } from "../../components/ui/TextInput";
+import type { ApplicationSummary, CustomerApplicationPayload } from "../../services/api/customer";
 
-type InsuranceType = "health" | "vehicle" | "travel" | "home" | "life";
+type InsuranceType = "HEALTH" | "LIFE" | "VEHICLE" | "TRAVEL" | "HOME";
 
 interface ApplicationFlowScreenProps {
   insuranceType: InsuranceType;
+  isAuthenticated: boolean;
+  otpRequested: boolean;
+  otpError?: string;
+  formError?: string;
+  isSendingOtp: boolean;
+  isVerifyingOtp: boolean;
+  isSubmitting: boolean;
   onBackToLanding: () => void;
-  onSubmit: () => void;
+  onSendOtp: (mobileNumber: string) => Promise<void>;
+  onVerifyOtp: (mobileNumber: string, otpCode: string) => Promise<void>;
+  onSubmit: (payload: CustomerApplicationPayload) => Promise<void>;
+  resumedApplication: ApplicationSummary | null;
 }
 
 const coverageOptions = [
-  { label: "₹5L", value: "5L" },
-  { label: "₹10L", value: "10L" },
-  { label: "₹25L", value: "25L" },
-  { label: "₹50L", value: "50L" },
-  { label: "₹1Cr", value: "1Cr" },
+  { label: "₹5L", value: "500000" },
+  { label: "₹10L", value: "1000000" },
+  { label: "₹25L", value: "2500000" },
+  { label: "₹50L", value: "5000000" },
+  { label: "₹1Cr", value: "10000000" },
 ];
 
 const tenureOptions = [
@@ -30,10 +42,10 @@ const tenureOptions = [
 ];
 
 const relationshipOptions = [
-  { label: "Spouse", value: "spouse" },
-  { label: "Parent", value: "parent" },
-  { label: "Sibling", value: "sibling" },
-  { label: "Child", value: "child" },
+  { label: "Spouse", value: "SPOUSE" },
+  { label: "Parent", value: "PARENT" },
+  { label: "Sibling", value: "FAMILY" },
+  { label: "Child", value: "CHILD" },
 ];
 
 const stepItems = [
@@ -43,26 +55,43 @@ const stepItems = [
 ];
 
 /**
- * ApplicationFlowScreen renders the three-step customer application form.
- * It previews journey resume messaging and insurance-specific coverage fields.
+ * ApplicationFlowScreen manages OTP verification and application submission.
+ * It collects customer data locally and hands validated actions back to the API layer.
  */
 export function ApplicationFlowScreen({
   insuranceType,
+  isAuthenticated,
+  otpRequested,
+  otpError,
+  formError,
+  isSendingOtp,
+  isVerifyingOtp,
+  isSubmitting,
   onBackToLanding,
+  onSendOtp,
+  onVerifyOtp,
   onSubmit,
+  resumedApplication,
 }: ApplicationFlowScreenProps) {
   const [step, setStep] = useState(0);
-  const [gender, setGender] = useState("male");
-  const [members, setMembers] = useState(["Self", "Spouse", "Child"]);
-  const [conditions, setConditions] = useState(["Diabetes"]);
+  const [fullName, setFullName] = useState("Tejas Shah");
+  const [mobileNumber, setMobileNumber] = useState("7778889997");
+  const [otpCode, setOtpCode] = useState("");
+  const [email, setEmail] = useState("tejas@example.com");
+  const [dateOfBirth, setDateOfBirth] = useState("1998-10-04");
+  const [gender, setGender] = useState<"MALE" | "FEMALE" | "OTHER">("MALE");
+  const [coverageAmount, setCoverageAmount] = useState("1000000");
+  const [tenureYears, setTenureYears] = useState("1");
+  const [nomineeName, setNomineeName] = useState("Ananya Shah");
+  const [nomineeRelationship, setNomineeRelationship] = useState("SPOUSE");
+  const [nomineeDob, setNomineeDob] = useState("2000-11-19");
+  const [nomineeMobile, setNomineeMobile] = useState("8887776665");
+  const [conditions, setConditions] = useState<string[]>(["Diabetes"]);
 
-  const addMember = () => {
-    const pool = ["Parent", "Child", "Spouse", "Sibling"];
-    const next = pool.find((member) => !members.includes(member));
-    if (next) {
-      setMembers((current) => [...current, next]);
-    }
-  };
+  const displayInsuranceType = useMemo(
+    () => insuranceType.charAt(0) + insuranceType.slice(1).toLowerCase(),
+    [insuranceType],
+  );
 
   const toggleCondition = (condition: string) => {
     setConditions((current) =>
@@ -72,19 +101,52 @@ export function ApplicationFlowScreen({
     );
   };
 
+  const handleNext = async () => {
+    if (step === 0 && !isAuthenticated) {
+      await onVerifyOtp(mobileNumber, otpCode);
+      setStep(1);
+      return;
+    }
+
+    if (step === 2) {
+      await onSubmit({
+        insuranceType,
+        fullName,
+        mobileNumber,
+        email,
+        dateOfBirth,
+        gender,
+        coverageAmount: Number(coverageAmount),
+        tenureYears: Number(tenureYears),
+        nomineeName,
+        nomineeRelationship,
+        nomineeDob,
+        nomineeMobile,
+        healthConditions: conditions,
+      });
+      return;
+    }
+
+    setStep((current) => current + 1);
+  };
+
   return (
     <div className="if-screen-stack">
-      <div className="if-resume-banner">
-        <div>
-          <strong>You have an active application. Continue where you left off.</strong>
+      {resumedApplication ? (
+        <div className="if-resume-banner">
+          <div>
+            <strong>You have an active application. Continue where you left off.</strong>
+          </div>
+          <div className="if-resume-actions">
+            <Button onClick={() => setStep(2)}>Resume</Button>
+            <Button onClick={onBackToLanding} variant="ghost">
+              Start New
+            </Button>
+          </div>
         </div>
-        <div className="if-resume-actions">
-          <Button>Resume</Button>
-          <Button onClick={onBackToLanding} variant="ghost">
-            Start New
-          </Button>
-        </div>
-      </div>
+      ) : null}
+
+      {formError ? <ErrorCard message={formError} /> : null}
 
       <section className="if-surface-card">
         <ProgressStepper currentStep={step} steps={stepItems} />
@@ -92,26 +154,57 @@ export function ApplicationFlowScreen({
         {step === 0 ? (
           <div className="if-screen-section">
             <div className="if-form-grid">
-              <TextInput id="full-name" label="Full Name" placeholder="Tejas Shah" />
+              <TextInput
+                label="Full Name"
+                onChange={(event) => setFullName(event.target.value)}
+                placeholder="Tejas Shah"
+                value={fullName}
+              />
               <div className="if-inline-field">
-                <TextInput id="mobile-number" label="Mobile Number" placeholder="7778889997" />
-                <Button className="if-inline-action">Send OTP</Button>
+                <TextInput
+                  label="Mobile Number"
+                  onChange={(event) => setMobileNumber(event.target.value)}
+                  placeholder="7778889997"
+                  value={mobileNumber}
+                />
+                <Button
+                  className="if-inline-action"
+                  loading={isSendingOtp}
+                  onClick={() => onSendOtp(mobileNumber)}
+                >
+                  Send OTP
+                </Button>
               </div>
-              <div className="if-form-grid-span">
-                <OTPInput label="Enter OTP" />
-              </div>
-              <TextInput id="dob" label="Date of Birth" placeholder="DD/MM/YYYY" />
+              {otpRequested ? (
+                <div className="if-form-grid-span">
+                  <div className="if-field">
+                    <OTPInput label="Enter OTP" onChange={setOtpCode} value={otpCode} />
+                    {otpError ? <span className="if-error-text">{otpError}</span> : null}
+                  </div>
+                </div>
+              ) : null}
+              <TextInput
+                label="Date of Birth"
+                onChange={(event) => setDateOfBirth(event.target.value)}
+                placeholder="YYYY-MM-DD"
+                value={dateOfBirth}
+              />
               <RadioPillGroup
                 label="Gender"
-                onChange={setGender}
+                onChange={(value) => setGender(value as "MALE" | "FEMALE" | "OTHER")}
                 options={[
-                  { label: "Male", value: "male" },
-                  { label: "Female", value: "female" },
-                  { label: "Other", value: "other" },
+                  { label: "Male", value: "MALE" },
+                  { label: "Female", value: "FEMALE" },
+                  { label: "Other", value: "OTHER" },
                 ]}
                 value={gender}
               />
-              <TextInput id="email" label="Email (Optional)" placeholder="name@example.com" />
+              <TextInput
+                label="Email (Optional)"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@example.com"
+                value={email}
+              />
             </div>
           </div>
         ) : null}
@@ -119,102 +212,38 @@ export function ApplicationFlowScreen({
         {step === 1 ? (
           <div className="if-screen-section">
             <div className="if-form-grid">
-              <TextInput
-                id="insurance-type"
-                label="Insurance Type"
-                placeholder={insuranceType.charAt(0).toUpperCase() + insuranceType.slice(1)}
-                readOnly
+              <TextInput label="Insurance Type" placeholder={displayInsuranceType} readOnly value={displayInsuranceType} />
+              <SelectField
+                label="Coverage Amount"
+                onChange={(event) => setCoverageAmount(event.target.value)}
+                options={coverageOptions}
+                value={coverageAmount}
               />
-              <SelectField label="Coverage Amount" options={coverageOptions} />
-              <SelectField label="Tenure" options={tenureOptions} />
+              <SelectField
+                label="Tenure"
+                onChange={(event) => setTenureYears(event.target.value)}
+                options={tenureOptions}
+                value={tenureYears}
+              />
 
-              {insuranceType === "health" ? (
-                <>
-                  <div className="if-form-grid-span">
-                    <div className="if-field">
-                      <span className="if-group-label">Insured Members</span>
-                      <div className="if-chip-row">
-                        {members.map((member) => (
-                          <span className="if-chip" key={member}>
-                            {member}
-                          </span>
-                        ))}
-                        <button className="if-chip if-chip-action" onClick={addMember} type="button">
-                          + Add Member
-                        </button>
-                      </div>
+              {insuranceType === "HEALTH" ? (
+                <div className="if-form-grid-span">
+                  <div className="if-field">
+                    <span className="if-group-label">Pre-existing Conditions</span>
+                    <div className="if-check-grid">
+                      {["Diabetes", "Hypertension", "Asthma", "Cardiac History"].map((condition) => (
+                        <label className="if-check-card" key={condition}>
+                          <input
+                            checked={conditions.includes(condition)}
+                            onChange={() => toggleCondition(condition)}
+                            type="checkbox"
+                          />
+                          <span>{condition}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
-                  <div className="if-form-grid-span">
-                    <div className="if-field">
-                      <span className="if-group-label">Pre-existing Conditions</span>
-                      <div className="if-check-grid">
-                        {["Diabetes", "Hypertension", "Asthma", "Cardiac History"].map(
-                          (condition) => (
-                            <label className="if-check-card" key={condition}>
-                              <input
-                                checked={conditions.includes(condition)}
-                                onChange={() => toggleCondition(condition)}
-                                type="checkbox"
-                              />
-                              <span>{condition}</span>
-                            </label>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : null}
-
-              {insuranceType === "vehicle" ? (
-                <>
-                  <SelectField
-                    label="Vehicle Type"
-                    options={[
-                      { label: "Car", value: "car" },
-                      { label: "Bike", value: "bike" },
-                      { label: "SUV", value: "suv" },
-                    ]}
-                  />
-                  <TextInput label="Registration Number" mono placeholder="MH12AB1234" />
-                  <TextInput label="Manufacturing Year" placeholder="2023" />
-                  <SelectField
-                    label="Fuel Type"
-                    options={[
-                      { label: "Petrol", value: "petrol" },
-                      { label: "Diesel", value: "diesel" },
-                      { label: "Electric", value: "electric" },
-                    ]}
-                  />
-                </>
-              ) : null}
-
-              {insuranceType === "travel" ? (
-                <>
-                  <TextInput label="Destination" placeholder="Singapore" />
-                  <TextInput label="Travel Dates" placeholder="15 Aug 2026 - 24 Aug 2026" />
-                  <TextInput label="Number of Travellers" placeholder="3" />
-                </>
-              ) : null}
-
-              {insuranceType === "life" ? (
-                <TextInput label="Sum Insured" placeholder="₹1,00,00,000" mono />
-              ) : null}
-
-              {insuranceType === "home" ? (
-                <>
-                  <TextInput label="Property Address" placeholder="Apartment or house address" />
-                  <SelectField
-                    label="Property Type"
-                    options={[
-                      { label: "Apartment", value: "apartment" },
-                      { label: "Independent House", value: "house" },
-                      { label: "Villa", value: "villa" },
-                    ]}
-                  />
-                  <TextInput label="Built-up Area" placeholder="1800 sq ft" />
-                </>
+                </div>
               ) : null}
             </div>
           </div>
@@ -223,24 +252,47 @@ export function ApplicationFlowScreen({
         {step === 2 ? (
           <div className="if-screen-section">
             <div className="if-form-grid">
-              <TextInput label="Nominee Full Name" placeholder="Ananya Shah" />
-              <SelectField label="Relationship" options={relationshipOptions} />
-              <TextInput label="Date of Birth" placeholder="DD/MM/YYYY" />
-              <TextInput label="Mobile Number" placeholder="8887776665" />
+              <TextInput
+                label="Nominee Full Name"
+                onChange={(event) => setNomineeName(event.target.value)}
+                placeholder="Ananya Shah"
+                value={nomineeName}
+              />
+              <SelectField
+                label="Relationship"
+                onChange={(event) => setNomineeRelationship(event.target.value)}
+                options={relationshipOptions}
+                value={nomineeRelationship}
+              />
+              <TextInput
+                label="Date of Birth"
+                onChange={(event) => setNomineeDob(event.target.value)}
+                placeholder="YYYY-MM-DD"
+                value={nomineeDob}
+              />
+              <TextInput
+                label="Mobile Number"
+                onChange={(event) => setNomineeMobile(event.target.value)}
+                placeholder="8887776665"
+                value={nomineeMobile}
+              />
             </div>
-            {insuranceType === "life" ? (
-              <div className="if-inline-note">
-                Life insurance nominee details will be pre-filled into the proposal summary.
-              </div>
-            ) : null}
           </div>
         ) : null}
 
         <footer className="if-form-footer">
-          <Button onClick={() => (step === 0 ? onBackToLanding() : setStep((current) => current - 1))} variant="ghost">
+          <Button
+            onClick={() => (step === 0 ? onBackToLanding() : setStep((current) => current - 1))}
+            variant="ghost"
+          >
             Back
           </Button>
-          <Button onClick={() => (step === 2 ? onSubmit() : setStep((current) => current + 1))}>
+          <Button
+            loading={step === 0 ? isVerifyingOtp : isSubmitting}
+            onClick={() => {
+              void handleNext();
+            }}
+          >
             {step === 2 ? "Submit" : "Next"}
           </Button>
         </footer>

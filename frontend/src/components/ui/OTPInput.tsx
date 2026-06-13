@@ -4,22 +4,28 @@ import type { ChangeEvent, KeyboardEvent } from "react";
 interface OTPInputProps {
   label: string;
   length?: number;
+  value?: string;
+  onChange?: (value: string) => void;
 }
 
 /**
  * OTPInput renders segmented OTP boxes with auto-advance behavior.
  * It is intended for the shared auth experience, not a one-off screen.
  */
-export function OTPInput({ label, length = 6 }: OTPInputProps) {
+export function OTPInput({ label, length = 6, value, onChange }: OTPInputProps) {
   const baseId = useId();
-  const [digits, setDigits] = useState<string[]>(() => Array.from({ length }, () => ""));
+  const [internalDigits, setInternalDigits] = useState<string[]>(() => Array.from({ length }, () => ""));
   const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const digits = value
+    ? value.padEnd(length, " ").slice(0, length).split("").map((digit) => (digit === " " ? "" : digit))
+    : internalDigits;
 
   const handleChange = (index: number, event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value.replace(/\D/g, "").slice(-1);
     const nextDigits = [...digits];
     nextDigits[index] = nextValue;
-    setDigits(nextDigits);
+    setInternalDigits(nextDigits);
+    onChange?.(nextDigits.join(""));
 
     if (nextValue && index < length - 1) {
       refs.current[index + 1]?.focus();

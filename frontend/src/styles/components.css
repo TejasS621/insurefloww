@@ -60,6 +60,24 @@
   width: 100%;
 }
 
+.if-button-spinner {
+  animation: if-button-spin 0.8s linear infinite;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  border-top-color: currentColor;
+  height: 14px;
+  width: 14px;
+}
+
+.if-button-ghost .if-button-spinner {
+  border-color: rgba(79, 70, 229, 0.25);
+  border-top-color: currentColor;
+}
+
+.if-button-loading-text {
+  opacity: 0.92;
+}
+
 .if-field {
   display: grid;
   gap: 8px;
@@ -538,6 +556,16 @@
 
   to {
     background-position: -200% 0;
+  }
+}
+
+@keyframes if-button-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }
 
