@@ -1,101 +1,82 @@
-import { Bell, FileText, Home, LifeBuoy, UserRound } from "lucide-react";
+import {
+  Bell,
+  Blocks,
+  ClipboardList,
+  CreditCard,
+  FileStack,
+  LayoutDashboard,
+  ListOrdered,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "./components/ui/Button";
 import { LayoutShell } from "./layouts/LayoutShell";
-import { ApplicationFlowScreen } from "./pages/application/ApplicationFlowScreen";
-import { CustomerDashboardScreen } from "./pages/dashboard/CustomerDashboardScreen";
-import { LandingScreen } from "./pages/landing/LandingScreen";
-import { PaymentInitiationScreen } from "./pages/payment/PaymentInitiationScreen";
-import { QuoteComparisonScreen } from "./pages/quotes/QuoteComparisonScreen";
-import { SupportTicketScreen } from "./pages/support/SupportTicketScreen";
+import { AdminDashboardScreen } from "./pages/admin/AdminDashboardScreen";
+import { AdminLoginScreen } from "./pages/admin/AdminLoginScreen";
+import { AdminRecordsScreen } from "./pages/admin/AdminRecordsScreen";
+import { AdminTicketsScreen } from "./pages/admin/AdminTicketsScreen";
+import { BrokerManagementScreen } from "./pages/admin/BrokerManagementScreen";
+import { StatusBadge } from "./components/ui/StatusBadge";
 
-type Screen =
-  | "landing"
-  | "application"
-  | "quotes"
-  | "payment"
+type AdminScreen =
   | "dashboard"
-  | "support";
-
-type InsuranceType = "health" | "vehicle" | "travel" | "home" | "life";
+  | "brokers"
+  | "transactions"
+  | "policies"
+  | "payments"
+  | "tickets";
 
 /**
- * App composes the customer-facing InsureFlow journey on top of the Phase 1 system.
- * It previews landing, application, quotes, payment, dashboard, and support screens.
+ * App mounts the admin-facing InsureFlow preview for this feature branch.
+ * It shows the login flow first and then the sidebar-driven admin workspace.
  */
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("landing");
-  const [selectedInsuranceType, setSelectedInsuranceType] = useState<InsuranceType>("health");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [screen, setScreen] = useState<AdminScreen>("dashboard");
 
-  const bottomNavItems = useMemo(
+  const adminNavItems = useMemo(
     () => [
-      {
-        label: "Home",
-        icon: Home,
-        active: screen === "landing" || screen === "application" || screen === "quotes" || screen === "payment",
-        onClick: () => setScreen("landing"),
-      },
-      {
-        label: "Policies",
-        icon: FileText,
-        active: screen === "dashboard",
-        onClick: () => setScreen("dashboard"),
-      },
-      {
-        label: "Tickets",
-        icon: LifeBuoy,
-        active: screen === "support",
-        onClick: () => setScreen("support"),
-      },
-      {
-        label: "Profile",
-        icon: UserRound,
-        active: false,
-        onClick: () => setScreen("dashboard"),
-      },
+      { label: "Dashboard", icon: LayoutDashboard, active: screen === "dashboard", onClick: () => setScreen("dashboard") },
+      { label: "Brokers", icon: Blocks, active: screen === "brokers", onClick: () => setScreen("brokers") },
+      { label: "Transactions", icon: ListOrdered, active: screen === "transactions", onClick: () => setScreen("transactions") },
+      { label: "Policies", icon: FileStack, active: screen === "policies", onClick: () => setScreen("policies") },
+      { label: "Payments", icon: CreditCard, active: screen === "payments", onClick: () => setScreen("payments") },
+      { label: "Tickets", icon: ClipboardList, active: screen === "tickets", onClick: () => setScreen("tickets") },
     ],
     [screen],
   );
 
-  const handleSelectType = (type: InsuranceType) => {
-    setSelectedInsuranceType(type);
-    setScreen("application");
-  };
+  if (!isAuthenticated) {
+    return <AdminLoginScreen onLoginComplete={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <LayoutShell
       navProps={{
-        notificationCount: 2,
+        notificationCount: 4,
         rightSlot: (
           <>
+            <StatusBadge status="admin">Admin</StatusBadge>
             <Button variant="ghost" iconOnly ariaLabel="Notifications">
               <Bell size={18} />
             </Button>
-            <button className="if-avatar-button" type="button" aria-label="Open user menu">
-              TS
+            <button className="if-avatar-button" type="button" aria-label="Open admin menu">
+              AD
             </button>
           </>
         ),
       }}
-      bottomNavProps={{
-        items: bottomNavItems,
+      sidebarProps={{
+        title: "Admin Console",
+        items: adminNavItems,
       }}
     >
-      {screen === "landing" ? <LandingScreen onSelectType={handleSelectType} /> : null}
-      {screen === "application" ? (
-        <ApplicationFlowScreen
-          insuranceType={selectedInsuranceType}
-          onBackToLanding={() => setScreen("landing")}
-          onSubmit={() => setScreen("quotes")}
-        />
-      ) : null}
-      {screen === "quotes" ? (
-        <QuoteComparisonScreen onBack={() => setScreen("application")} onProceed={() => setScreen("payment")} />
-      ) : null}
-      {screen === "payment" ? <PaymentInitiationScreen onProceed={() => setScreen("dashboard")} /> : null}
-      {screen === "dashboard" ? <CustomerDashboardScreen onOpenSupport={() => setScreen("support")} /> : null}
-      {screen === "support" ? <SupportTicketScreen /> : null}
+      {screen === "dashboard" ? <AdminDashboardScreen /> : null}
+      {screen === "brokers" ? <BrokerManagementScreen /> : null}
+      {screen === "transactions" ? <AdminRecordsScreen view="transactions" /> : null}
+      {screen === "policies" ? <AdminRecordsScreen view="policies" /> : null}
+      {screen === "payments" ? <AdminRecordsScreen view="payments" /> : null}
+      {screen === "tickets" ? <AdminTicketsScreen /> : null}
     </LayoutShell>
   );
 }
