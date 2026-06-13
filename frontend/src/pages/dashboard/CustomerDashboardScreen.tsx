@@ -1,15 +1,45 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "../../components/ui/Button";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorCard } from "../../components/ui/ErrorCard";
 import { Skeleton } from "../../components/ui/Skeleton";
+import { StatCard } from "../../components/ui/StatCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import type { ApplicationSummary, PolicySummary, TicketSummary } from "../../services/api/customer";
 import { formatCurrencyINR } from "../../utils/formatters";
 
+const getDaysElapsed = (updatedAtStr: string) => {
+  const updatedAt = new Date(updatedAtStr);
+  const now = new Date();
+  const oneDay = 24 * 60 * 60 * 1000;
+  const diffTime = Math.abs(now.getTime() - updatedAt.getTime());
+  const diffDays = Math.floor(diffTime / oneDay);
+  if (diffDays === 0) {
+    return "today";
+  } else if (diffDays === 1) {
+    return "1 day ago";
+  } else {
+    return `${diffDays} days ago`;
+  }
+};
+
+const getPriorityClass = (priority: string) => {
+  switch (priority.toUpperCase()) {
+    case "HIGH":
+      return "is-high";
+    case "MEDIUM":
+      return "is-medium";
+    case "LOW":
+    default:
+      return "is-low";
+  }
+};
+
 type DashboardTab = "policies" | "transactions" | "tickets";
 
 interface CustomerDashboardScreenProps {
+  customerDisplayName: string;
   applicationsState: {
     loading: boolean;
     error?: string;
@@ -38,6 +68,7 @@ interface CustomerDashboardScreenProps {
  * Policies, applications, and tickets each keep their own loading, success, and error state.
  */
 export function CustomerDashboardScreen({
+  customerDisplayName,
   applicationsState,
   policiesState,
   ticketsState,
@@ -56,13 +87,23 @@ export function CustomerDashboardScreen({
         value: formatCurrencyINR(
           policiesState.data.reduce((total, policy) => total + (policy.coverage_amount ?? 0), 0),
         ),
+        variant: "stat-1" as const,
       },
-      { label: "Active Policies", value: String(policiesState.data.length) },
+      {
+        label: "Active Policies",
+        value: String(policiesState.data.length),
+        variant: "stat-2" as const,
+      },
       {
         label: "Next Renewal",
         value: activePolicy?.end_date ? new Date(activePolicy.end_date).toLocaleDateString("en-IN") : "N/A",
+        variant: "stat-3" as const,
       },
-      { label: "Tickets Open", value: String(ticketsState.data.length) },
+      {
+        label: "Tickets Open",
+        value: String(ticketsState.data.length),
+        variant: "stat-4" as const,
+      },
     ],
     [activePolicy?.end_date, policiesState.data, ticketsState.data.length],
   );
@@ -71,7 +112,9 @@ export function CustomerDashboardScreen({
     <div className="if-screen-stack">
       <section className="if-section-heading">
         <div>
-          <h2>Welcome back, {applicationSummary?.personal_details.first_name ?? "Customer"}</h2>
+          <h2>
+            Welcome back, {applicationSummary?.personal_details.first_name ?? customerDisplayName}
+          </h2>
           <p className="if-inline-subtitle">{new Date().toLocaleDateString("en-IN", { dateStyle: "long" })}</p>
         </div>
       </section>
@@ -111,15 +154,16 @@ export function CustomerDashboardScreen({
           </div>
         </section>
       ) : (
-        <ErrorCard message="No active policies were found for this account yet." />
+        <EmptyState
+          title="No Active Policies"
+          description="It looks like you don't have any active insurance policies. Explore plans to get started."
+          action={<Button onClick={() => window.location.hash = "#/"}>Explore Plans</Button>}
+        />
       )}
 
       <section className="if-dashboard-stats">
         {dashboardStats.map((item) => (
-          <article className="if-mini-stat-card" key={item.label}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-          </article>
+          <StatCard key={item.label} label={item.label} value={item.value} variant={item.variant} />
         ))}
       </section>
 
@@ -149,6 +193,12 @@ export function CustomerDashboardScreen({
             </div>
           ) : policiesState.error ? (
             <ErrorCard message={policiesState.error} onRetry={policiesState.onRetry} />
+          ) : policiesState.data.length === 0 ? (
+            <EmptyState
+              title="No Policies Found"
+              description="You don't have any policies registered with this account."
+              action={<Button onClick={() => window.location.hash = "#/"}>Explore Plans</Button>}
+            />
           ) : (
             <div className="if-table-wrap">
               <table className="if-data-table">
@@ -191,6 +241,11 @@ export function CustomerDashboardScreen({
             </div>
           ) : applicationsState.error ? (
             <ErrorCard message={applicationsState.error} onRetry={applicationsState.onRetry} />
+          ) : applicationsState.data.length === 0 ? (
+            <EmptyState
+              title="No Transactions Found"
+              description="Your transaction and payment history is empty."
+            />
           ) : (
             <div className="if-table-wrap">
               <table className="if-data-table">
@@ -227,17 +282,23 @@ export function CustomerDashboardScreen({
             </div>
           ) : ticketsState.error ? (
             <ErrorCard message={ticketsState.error} onRetry={ticketsState.onRetry} />
+          ) : ticketsState.data.length === 0 ? (
+            <EmptyState
+              title="No Tickets Open"
+              description="You don't have any support tickets raised. If you need help, raise a ticket below."
+              action={<Button onClick={onOpenSupport}>Raise Ticket</Button>}
+            />
           ) : (
             <div className="if-ticket-stack">
               {ticketsState.data.map((ticket) => (
-                <div className="if-ticket-row" key={ticket.ticket_reference}>
+                <div className={`if-ticket-row ${getPriorityClass(ticket.priority)}`} key={ticket.ticket_reference}>
                   <div>
                     <p className="if-mono">{ticket.ticket_reference}</p>
                     <h3>{ticket.subject}</h3>
                   </div>
                   <div className="if-ticket-meta">
                     <StatusBadge status="processing">{ticket.status}</StatusBadge>
-                    <span>Last updated {new Date(ticket.updated_at).toLocaleDateString("en-IN")}</span>
+                    <span>Updated {getDaysElapsed(ticket.updated_at)}</span>
                   </div>
                 </div>
               ))}

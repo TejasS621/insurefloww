@@ -20,3 +20,16 @@ class PaymentInitiationResponse(BaseModel):
     )
     status: str = Field(..., description="Current status for the hosted payment session.")
 
+
+class PaymentStatusResponse(BaseModel):
+    """Polling-friendly payment status payload returned to the frontend."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    payment_status: str = Field(..., description="Current payment status for the transaction.")
+    transaction_status: str = Field(..., description="Current overall transaction lifecycle status.")
+    provider_payment_reference: str | None = Field(
+        default=None,
+        description="Provider-side payment reference when one has been assigned.",
+    )
+

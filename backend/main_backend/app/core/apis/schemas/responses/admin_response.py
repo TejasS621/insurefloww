@@ -18,6 +18,8 @@ class BrokerRegistryResponse(BaseModel):
     webhook_url: str
     status: str
     created_by_admin: str | None = None
+    api_key: str | None = None
+    last_key_rotated_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -90,6 +92,55 @@ class AdminPolicyResponse(BaseModel):
     document_url: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+class AdminTransactionResponse(BaseModel):
+    """Transaction payload returned by admin transaction inspection APIs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    transaction_reference: str
+    customer_name: str
+    insurance_type: str
+    amount: float = Field(..., ge=0)
+    status: str
+    payment_status: str
+    policy_status: str
+    user_id: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    date: str | None = None
+
+
+class AdminTransactionDetailResponse(AdminTransactionResponse):
+    """Detailed transaction payload returned for admin side drawers."""
+
+    application_reference: str | None = None
+    selected_quote_id: str | None = None
+    selected_addons: list[str] = Field(default_factory=list)
+    base_premium: float | None = Field(default=None, ge=0)
+    addon_amount: float = Field(default=0, ge=0)
+    final_amount: float | None = Field(default=None, ge=0)
+    provider_transaction_reference: str | None = None
+    provider_payment_reference: str | None = None
+    provider_policy_reference: str | None = None
+
+
+class AdminPaymentResponse(BaseModel):
+    """Payment payload returned by admin payment monitoring APIs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    payment_reference: str
+    transaction_reference: str
+    gateway: str
+    amount: float = Field(..., ge=0)
+    currency: str
+    status: str
+    provider_transaction_reference: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    date: str | None = None
 
 
 class StatusCountResponse(BaseModel):

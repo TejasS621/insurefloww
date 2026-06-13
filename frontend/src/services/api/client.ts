@@ -42,12 +42,21 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    credentials: "include",
-    headers: getHeaders(options),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      credentials: "include",
+      headers: getHeaders(options),
+    });
+  } catch {
+    throw buildApiError(
+      503,
+      "Unable to reach the backend service. Please make sure the main and provider backends are running.",
+      [{ type: "network_error", detail: "Backend service is unreachable." }],
+    );
+  }
 
   const contentType = response.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");

@@ -33,6 +33,28 @@ from backend.provider_backend.app.core.services.payment_service import (
 )
 
 
+def _to_date(value: object) -> object:
+    """Convert stored datetimes to plain dates for API responses."""
+    return value.date() if hasattr(value, "date") else value
+
+
+def _normalize_addon_payload(addon: object) -> ProviderQuoteAddonResponse:
+    """Normalize stored add-on payloads into the public quote add-on response schema."""
+    if isinstance(addon, ProviderQuoteAddonResponse):
+        return addon
+    if isinstance(addon, dict):
+        return ProviderQuoteAddonResponse(
+            addon_code=str(addon.get("addon_code", "")),
+            addon_name=str(addon.get("addon_name", "")),
+            addon_price=float(addon.get("addon_price", 0.0)),
+        )
+    return ProviderQuoteAddonResponse(
+        addon_code="UNKNOWN",
+        addon_name=str(addon),
+        addon_price=0.0,
+    )
+
+
 def to_broker_response(broker: BrokerRegistry) -> BrokerRegistryResponse:
     """Convert a broker registry record into its API response schema."""
     return BrokerRegistryResponse(
@@ -48,25 +70,24 @@ def to_broker_response(broker: BrokerRegistry) -> BrokerRegistryResponse:
 
 def to_provider_quote_response(quote: ProviderQuote) -> ProviderQuoteResponse:
     """Convert a provider quote model into the public provider quote payload."""
+    status_value = quote.status.value if hasattr(quote.status, "value") else str(quote.status)
+    risk_category_value = (
+        quote.risk_category.value if hasattr(quote.risk_category, "value") else str(quote.risk_category)
+    ) if quote.risk_category else None
     return ProviderQuoteResponse(
         provider_quote_id=quote.provider_quote_id,
         provider_transaction_reference=quote.provider_transaction_reference,
+        provider_name="Demo Provider",
         plan_code=quote.plan_code,
+        plan_name=quote.plan_code.split(":", 1)[1] if ":" in quote.plan_code else quote.plan_code,
         base_premium=quote.base_premium,
         tax_amount=quote.tax_amount,
         total_premium=quote.total_premium,
         coverage_amount=quote.coverage_amount,
         risk_score=quote.risk_score,
-        risk_category=quote.risk_category.value if quote.risk_category else None,
-        available_addons=[
-            ProviderQuoteAddonResponse(
-                addon_code=str(addon.get("addon_code", "")),
-                addon_name=str(addon.get("addon_name", "")),
-                addon_price=float(addon.get("addon_price", 0.0)),
-            )
-            for addon in quote.available_addons
-        ],
-        status=quote.status.value,
+        risk_category=risk_category_value,
+        available_addons=[_normalize_addon_payload(addon) for addon in quote.available_addons],
+        status=status_value,
         expires_at=quote.expires_at,
     )
 
@@ -106,9 +127,9 @@ def to_provider_policy_response(policy: Policy) -> ProviderPolicyResponse:
         policy_status=policy.policy_status.value,
         coverage_amount=policy.coverage_amount,
         premium_amount=policy.premium_amount,
-        issue_date=policy.issue_date,
-        start_date=policy.start_date,
-        end_date=policy.end_date,
+        issue_date=_to_date(policy.issue_date),
+        start_date=_to_date(policy.start_date),
+        end_date=_to_date(policy.end_date),
         policy_document_url=f"/api/v1/provider/policies/{policy.policy_number}/document",
     )
 

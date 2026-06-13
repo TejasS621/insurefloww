@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from backend.provider_backend.app.core.apis.schemas.shared import (
     CoverageDetailsSchema,
@@ -25,4 +25,13 @@ class ProviderQuoteCreateRequest(BaseModel):
     personal_details: PersonalDetailsSchema
     health_details: HealthDetailsSchema | None = None
     coverage_details: CoverageDetailsSchema
+
+    @model_validator(mode="after")
+    def validate_quote_dependencies(self) -> "ProviderQuoteCreateRequest":
+        """Reject inconsistent quote payloads before pricing begins."""
+        if self.coverage_details.insurance_type != self.insurance_type:
+            raise ValueError("Coverage insurance type must match the quote insurance type.")
+        if self.insurance_type.value == "HEALTH" and self.health_details is None:
+            raise ValueError("Health details are required for health insurance quotes.")
+        return self
 

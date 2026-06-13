@@ -11,9 +11,7 @@ html {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(14, 165, 233, 0.1), transparent 28%),
-    linear-gradient(180deg, #f8fbff 0%, var(--if-page-bg) 30%, #e9eff8 100%);
+  background-color: var(--if-page-bg);
   color: var(--if-text-1);
   font: var(--fs-body);
   min-width: 320px;
@@ -44,8 +42,22 @@ a {
 }
 
 .if-content-shell {
-  width: min(calc(100% - 40px), var(--if-max-content-width));
+  width: 100%;
+  max-width: var(--if-max-content-width);
   margin: 0 auto;
+  padding: 0 20px;
+}
+
+@media (min-width: 768px) {
+  .if-content-shell {
+    padding: 0 32px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .if-content-shell {
+    padding: 0 80px;
+  }
 }
 
 .if-eyebrow {
@@ -64,16 +76,24 @@ a {
 .if-hero-copy {
   margin: var(--space-4) 0 0;
   max-width: 62ch;
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--if-hero-text);
 }
 
 .if-surface-card {
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--if-surface-glass);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   backdrop-filter: blur(10px);
   padding: 28px;
+  transition:
+    transform 300ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.if-surface-card:hover {
+  box-shadow: var(--shadow-modal);
+  transform: translateY(-2px);
 }
 
 .if-grid {
@@ -124,7 +144,7 @@ a {
   background: var(--if-grad-hero);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  color: #ffffff;
+  color: var(--if-text-inverse);
   display: grid;
   gap: var(--space-8);
   grid-template-columns: minmax(0, 1fr) auto;
@@ -179,20 +199,37 @@ a {
 }
 
 .if-customer-hero {
-  background: var(--if-grad-hero);
-  border-radius: var(--radius-lg);
-  color: #fff;
+  background:
+    radial-gradient(circle at 10% 90%, rgba(125, 82, 96, 0.15), transparent 40%),
+    radial-gradient(circle at 90% 10%, rgba(103, 80, 164, 0.2), transparent 45%),
+    var(--if-grad-hero);
+  border-radius: var(--radius-xxl);
+  color: var(--if-text-inverse);
   overflow: hidden;
-  padding: 56px 36px;
+  padding: 80px 36px;
   position: relative;
+  transition: transform 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.if-customer-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
 .if-customer-hero::after {
-  background:
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.3), transparent 40%);
+  background: radial-gradient(circle, rgba(103, 80, 164, 0.25) 0%, rgba(125, 82, 96, 0.15) 45%, transparent 70%);
+  filter: blur(60px);
   content: "";
-  inset: 0;
+  inset: -15% -15% auto auto;
   position: absolute;
+  width: 500px;
+  height: 500px;
+  pointer-events: none;
 }
 
 .if-customer-hero-copy {
@@ -209,7 +246,7 @@ a {
 }
 
 .if-customer-hero-text {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--if-text-inverse-muted);
   margin: 16px auto 28px;
   max-width: 58ch;
 }
@@ -221,21 +258,31 @@ a {
 }
 
 .if-insurance-card {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--if-border);
+  background: var(--if-card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  padding: 24px;
+  padding: 28px 24px;
   transition:
     transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
     box-shadow 180ms ease;
 }
 
 .if-insurance-card:hover {
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
+  border-color: var(--if-violet);
+  box-shadow: 0 12px 24px rgba(124, 58, 237, 0.16);
   transform: translateY(-4px);
+}
+
+.if-insurance-card.is-active,
+.if-insurance-card.is-selected {
+  border: 2px solid var(--if-violet);
+  background-color: rgba(124, 58, 237, 0.08);
 }
 
 .if-insurance-card h3,
@@ -244,6 +291,7 @@ a {
 .if-ticket-row h3,
 .if-active-policy-card h3 {
   font: var(--fs-h3);
+  color: var(--if-text-1);
   margin: 0;
 }
 
@@ -304,13 +352,24 @@ a {
 }
 
 .if-chip {
-  background: #eef2ff;
-  border: 1px solid rgba(79, 70, 229, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--if-border);
   border-radius: var(--radius-pill);
-  color: #4338ca;
+  color: var(--if-text-2);
+  cursor: pointer;
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: 36px;
-  padding: 8px 14px;
+  padding: 6px 14px;
+  transition: all 160ms ease;
+}
+
+.if-chip.is-active,
+.if-chip.is-selected {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: var(--if-violet);
+  color: var(--if-text-1);
 }
 
 .if-chip-action {
@@ -325,7 +384,7 @@ a {
 
 .if-check-card {
   align-items: center;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--if-card-bg);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-md);
   display: flex;
@@ -357,7 +416,7 @@ a {
 }
 
 .if-quote-card {
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--if-card-bg);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
@@ -420,7 +479,7 @@ a {
 }
 
 .if-quote-monthly {
-  color: var(--if-navy);
+  color: var(--if-text-1);
   font: 700 36px/1 "Inter", sans-serif;
   margin: 0;
 }
@@ -458,7 +517,7 @@ a {
 
 .if-addon-row {
   align-items: center;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--if-card-bg);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-md);
   display: flex;
@@ -483,10 +542,10 @@ a {
 
 .if-sticky-total-bar {
   align-items: center;
-  background: rgba(10, 22, 40, 0.95);
+  background: color-mix(in srgb, var(--if-charcoal) 92%, transparent);
   border-radius: var(--radius-md);
   bottom: calc(var(--if-bottom-nav-height) + 16px);
-  color: #fff;
+  color: var(--if-text-inverse);
   display: flex;
   gap: 16px;
   justify-content: space-between;
@@ -495,7 +554,7 @@ a {
 }
 
 .if-total-label {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--if-text-inverse-muted);
   margin: 0;
 }
 
@@ -512,7 +571,7 @@ a {
 .if-payment-grid {
   display: grid;
   gap: var(--space-6);
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
 }
 
 .if-payment-lines {
@@ -536,7 +595,7 @@ a {
 }
 
 .if-payment-total strong {
-  color: var(--if-navy);
+  color: var(--if-text-1);
   font: 700 32px/1.1 "Inter", sans-serif;
 }
 
@@ -566,7 +625,7 @@ a {
   align-items: center;
   background: var(--if-grad-primary);
   border-radius: var(--radius-lg);
-  color: #fff;
+  color: var(--if-text-inverse);
   display: flex;
   gap: var(--space-6);
   justify-content: space-between;
@@ -574,7 +633,7 @@ a {
 }
 
 .if-active-policy-meta {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--if-text-inverse-muted);
   margin: 10px 0 0;
 }
 
@@ -591,7 +650,7 @@ a {
 
 .if-button-inverse {
   border-color: rgba(255, 255, 255, 0.48);
-  color: #fff;
+  color: var(--if-text-inverse);
 }
 
 .if-dashboard-stats {
@@ -601,7 +660,7 @@ a {
 }
 
 .if-mini-stat-card {
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--if-card-bg);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
@@ -667,7 +726,7 @@ a {
 
 .if-ticket-row {
   align-items: center;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--if-card-bg);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-md);
   display: flex;
@@ -681,7 +740,7 @@ a {
 }
 
 .if-mobile-sheet {
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--if-surface);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-modal);
@@ -705,8 +764,8 @@ a {
 }
 
 .if-error-card {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
   padding: 20px;
@@ -736,11 +795,12 @@ a {
 }
 
 .if-admin-auth-card {
-  background: #fff;
+  background: var(--if-card-bg);
+  border: 1px solid rgba(124, 58, 237, 0.2);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-modal);
   max-width: 480px;
-  padding: 36px;
+  padding: 48px 40px;
   width: min(100%, 480px);
 }
 
@@ -841,7 +901,7 @@ a {
 }
 
 .if-key-reveal-card {
-  background: rgba(248, 250, 252, 0.9);
+  background: var(--if-input-bg);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-md);
   padding: 18px;
@@ -888,7 +948,7 @@ a {
 
 .if-date-filter {
   align-items: center;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--if-card-bg);
   border: 1.5px solid var(--if-border);
   border-radius: var(--radius-sm);
   display: inline-flex;
@@ -904,7 +964,7 @@ a {
 
 .if-page-pill {
   align-items: center;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--if-pill-bg);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-pill);
   display: inline-flex;
@@ -927,7 +987,7 @@ a {
 }
 
 .if-detail-panel {
-  background: rgba(248, 250, 252, 0.92);
+  background: var(--if-page-bg);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-md);
   color: var(--if-text-2);
@@ -935,11 +995,21 @@ a {
 }
 
 .if-admin-ticket-card {
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--if-card-bg);
   border: 1px solid var(--if-border);
   border-radius: var(--radius-md);
   display: flex;
   overflow: hidden;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.if-admin-ticket-card:hover {
+  border-color: rgba(103, 80, 164, 0.28);
+  box-shadow: var(--shadow-card);
+  transform: translateY(-1px);
 }
 
 .if-priority-rail {
@@ -960,9 +1030,108 @@ a {
 
 .if-admin-ticket-main {
   display: grid;
-  gap: 12px;
+  gap: 18px;
   padding: 18px 20px;
   width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.if-admin-ticket-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.if-admin-ticket-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.if-admin-ticket-ref {
+  color: var(--if-text-2);
+  font-size: 13px;
+}
+
+.if-admin-ticket-copy h3 {
+  color: var(--if-text-1);
+  margin: 0;
+}
+
+.if-admin-ticket-customer {
+  color: var(--if-text-2);
+  font-size: 13px;
+  margin: 0;
+}
+
+.if-admin-ticket-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.if-admin-ticket-time {
+  color: var(--if-text-2);
+  font-size: 12px;
+}
+
+.if-admin-ticket-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.if-admin-ticket-summary-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.if-admin-ticket-summary-card {
+  background: var(--if-card-bg);
+  border: 1px solid var(--if-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 8px;
+  padding: 18px 20px;
+}
+
+.if-admin-ticket-summary-card span {
+  color: var(--if-text-2);
+  font-size: 13px;
+}
+
+.if-admin-ticket-summary-card strong {
+  color: var(--if-text-1);
+  font: 700 24px/1.2 "Inter", sans-serif;
+}
+
+.if-admin-ticket-toolbar {
+  display: grid;
+  gap: 16px;
+}
+
+.if-admin-ticket-detail-panel,
+.if-admin-ticket-form-panel {
+  background: var(--if-card-alt);
+  border: 1px solid var(--if-border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+}
+
+.if-admin-ticket-panel-title {
+  color: var(--if-text-1);
+  font: var(--fs-h3);
+  margin: 0 0 var(--space-4);
+}
+
+.if-admin-ticket-status-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
 }
 
 .if-admin-ticket-meta {
@@ -974,7 +1143,7 @@ a {
 }
 
 .if-ticket-quote {
-  background: rgba(248, 250, 252, 0.95);
+  background: var(--if-card-alt);
   border-left: 3px solid var(--if-indigo);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   margin: 0;
@@ -996,7 +1165,9 @@ a {
   .if-active-policy-card,
   .if-admin-metric-grid,
   .if-admin-dashboard-grid,
-  .if-admin-toolbar {
+  .if-admin-toolbar,
+  .if-admin-ticket-summary-grid,
+  .if-admin-ticket-status-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1012,10 +1183,6 @@ a {
 }
 
 @media (max-width: 768px) {
-  .if-content-shell {
-    width: min(calc(100% - 64px), var(--if-max-content-width));
-  }
-
   .if-surface-card,
   .if-hero-card {
     padding: 24px;
@@ -1057,13 +1224,21 @@ a {
   .if-admin-auth-card {
     padding: 28px 24px;
   }
+
+  .if-admin-ticket-main {
+    grid-template-columns: 1fr;
+  }
+
+  .if-admin-ticket-actions {
+    width: 100%;
+  }
+
+  .if-admin-ticket-actions .if-button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
-  .if-content-shell {
-    width: min(calc(100% - 40px), var(--if-max-content-width));
-  }
-
   .if-hero-title {
     font-size: 28px;
   }

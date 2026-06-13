@@ -45,6 +45,9 @@ export interface ApplicationSummary {
     pincode: string;
   };
   health_details?: {
+    height_cm?: number | null;
+    weight_kg?: number | null;
+    calculated_bmi?: number | null;
     smoker: boolean;
     diabetes: boolean;
     blood_pressure: boolean;
@@ -123,11 +126,12 @@ export interface CustomerApplicationPayload {
   gender: "MALE" | "FEMALE" | "OTHER";
   coverageAmount: number;
   tenureYears: number;
-  nomineeName: string;
-  nomineeRelationship: string;
-  nomineeDob: string;
-  nomineeMobile: string;
+  guestIdentifier?: string;
   healthConditions: string[];
+  smoker?: boolean;
+  insuredMembers?: string[];
+  heightCm?: number | null;
+  weightKg?: number | null;
 }
 
 function splitName(fullName: string) {
@@ -136,6 +140,21 @@ function splitName(fullName: string) {
     firstName: parts[0] ?? "Customer",
     lastName: parts.slice(1).join(" ") || "User",
   };
+}
+
+function normalizeDateOfBirth(dateOfBirth: string) {
+  const trimmed = dateOfBirth.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const slashMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, day, month, year] = slashMatch;
+    return `${year}-${month}-${day}`;
+  }
+
+  return trimmed;
 }
 
 export const customerApi = {
@@ -153,16 +172,27 @@ export const customerApi = {
   },
   createApplication(payload: CustomerApplicationPayload) {
     const { firstName, lastName } = splitName(payload.fullName);
+    const normalizedDateOfBirth = normalizeDateOfBirth(payload.dateOfBirth);
+    const calculatedBmi =
+      payload.insuranceType === "HEALTH" &&
+      payload.heightCm &&
+      payload.heightCm > 0 &&
+      payload.weightKg &&
+      payload.weightKg > 0
+        ? Number((payload.weightKg / ((payload.heightCm / 100) ** 2)).toFixed(2))
+        : null;
+
     return apiRequest<ApplicationSummary>("/applications", {
       method: "POST",
       body: {
         insurance_type: payload.insuranceType,
+        guest_identifier: payload.guestIdentifier ?? `guest-${payload.mobileNumber}`,
         personal_details: {
           first_name: firstName,
           last_name: lastName,
-          email: payload.email,
+          email: payload.email || `guest.${payload.mobileNumber}@insurefloww.com`,
           mobile_number: payload.mobileNumber,
-          date_of_birth: payload.dateOfBirth,
+          date_of_birth: normalizedDateOfBirth,
           gender: payload.gender,
           address_line_1: "Customer address line 1",
           city: "Mumbai",
@@ -172,7 +202,10 @@ export const customerApi = {
         health_details:
           payload.insuranceType === "HEALTH"
             ? {
-                smoker: false,
+                height_cm: payload.heightCm ?? null,
+                weight_kg: payload.weightKg ?? null,
+                calculated_bmi: calculatedBmi,
+                smoker: payload.smoker ?? false,
                 diabetes: payload.healthConditions.includes("Diabetes"),
                 blood_pressure: payload.healthConditions.includes("Hypertension"),
                 heart_ailments: payload.healthConditions.includes("Cardiac History"),
@@ -184,8 +217,14 @@ export const customerApi = {
           insurance_type: payload.insuranceType,
           coverage_amount: payload.coverageAmount,
           tenure_years: payload.tenureYears,
-          relation: "SELF",
-          insured_members: 1,
+          relation:
+            payload.insuranceType === "HEALTH" && (payload.insuredMembers?.length ?? 0) > 1
+              ? "FAMILY"
+              : "SELF",
+          insured_members:
+            payload.insuranceType === "HEALTH"
+              ? Math.max(payload.insuredMembers?.length ?? 1, 1)
+              : 1,
           sum_insured: payload.coverageAmount,
           pan_india_cover: true,
         },

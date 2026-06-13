@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from enum import Enum
 
 from odmantic import Field, Model
@@ -23,9 +23,9 @@ class Policy(Model):
     policy_status: PolicyStatus = Field(default=PolicyStatus.PENDING)
     coverage_amount: float = Field(..., ge=0)
     premium_amount: float = Field(..., ge=0)
-    issue_date: date | None = Field(default=None)
-    start_date: date | None = Field(default=None)
-    end_date: date | None = Field(default=None)
+    issue_date: datetime | None = Field(default=None)
+    start_date: datetime | None = Field(default=None)
+    end_date: datetime | None = Field(default=None)
     policy_pdf_path: str | None = Field(default=None)
     policy_document_url: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

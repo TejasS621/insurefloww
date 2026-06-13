@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 
 from odmantic import AIOEngine
 
@@ -98,11 +98,24 @@ class ApplicationService:
         application_reference = self._generate_reference("APP", request_data.insurance_type.value)
         transaction_reference = self._generate_reference("TXN", request_data.insurance_type.value)
 
-        personal_details = PersonalDetails(**request_data.personal_details.model_dump())
+        personal_payload = request_data.personal_details.model_dump()
+        personal_payload["date_of_birth"] = datetime.combine(
+            request_data.personal_details.date_of_birth,
+            time.min,
+            tzinfo=timezone.utc,
+        )
+        personal_details = PersonalDetails(**personal_payload)
         health_details = (
-            HealthDetails(**request_data.health_details.model_dump())
+            HealthDetails(
+                **{
+                    **request_data.health_details.model_dump(exclude={"other_conditions"}),
+                    "other_conditions": ", ".join(request_data.health_details.other_conditions)
+                    if request_data.health_details.other_conditions
+                    else None,
+                }
+            )
             if request_data.health_details
-            else None
+            else HealthDetails()
         )
         coverage_details = CoverageDetails(**request_data.coverage_details.model_dump())
 

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from odmantic import AIOEngine
 
 from backend.main_backend.app.core.apis.routes._mappers import to_quote_response
-from backend.main_backend.app.core.apis.routes.dependencies import get_current_user_id
+from backend.main_backend.app.core.apis.routes.dependencies import get_optional_user_id
 from backend.main_backend.app.core.apis.schemas.requests.quote_request import QuoteSelectRequest
 from backend.main_backend.app.core.apis.schemas.responses.common_response import APIResponse
 from backend.main_backend.app.core.apis.schemas.responses.quote_response import NormalizedQuoteResponse
@@ -26,9 +26,9 @@ async def select_quote(
     quote_id: str,
     request_data: QuoteSelectRequest,
     engine: AIOEngine = Depends(get_database),
-    user_id: str = Depends(get_current_user_id),
+    user_id: str | None = Depends(get_optional_user_id),
 ) -> APIResponse[NormalizedQuoteResponse]:
-    """Select a quote for the authenticated customer and update pricing totals."""
+    """Select a quote for a guest or authenticated customer and update pricing totals."""
     quote_record = await engine.find_one(Quote, Quote.provider_quote_id == quote_id)
     if quote_record is None:
         raise NotFoundServiceError("The requested quote could not be found.")
@@ -39,11 +39,11 @@ async def select_quote(
     )
     if application is None:
         raise NotFoundServiceError("The application for the requested quote could not be found.")
-    if application.user_id is None:
+    if application.user_id is None and user_id is not None:
         application.user_id = user_id
         application.updated_at = datetime.now(timezone.utc)
         await engine.save(application)
-    elif application.user_id != user_id:
+    elif application.user_id is not None and user_id is not None and application.user_id != user_id:
         raise AuthorizationServiceError("You are not allowed to select this quote.")
 
     quote = await quote_service.select_quote(

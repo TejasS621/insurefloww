@@ -1,7 +1,8 @@
-import { Check, Copy, KeyRound } from "lucide-react";
+import { AlertTriangle, Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "../../components/ui/Button";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorCard } from "../../components/ui/ErrorCard";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton } from "../../components/ui/Skeleton";
@@ -30,12 +31,16 @@ export function BrokerManagementScreen() {
   const [error, setError] = useState("");
   const [transientApiKey, setTransientApiKey] = useState<string | null>(null);
   const [selectedBrokerCode, setSelectedBrokerCode] = useState<string | null>(null);
+  const [isRevealed, setIsRevealed] = useState(false);
   const [formValues, setFormValues] = useState({
     brokerName: "",
     brokerCode: "",
     callbackUrl: "",
     webhookUrl: "",
   });
+
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [rotateLoading, setRotateLoading] = useState(false);
 
   const loadBrokers = async () => {
     setLoading(true);
@@ -58,6 +63,7 @@ export function BrokerManagementScreen() {
     setModalState("closed");
     setTransientApiKey(null);
     setSelectedBrokerCode(null);
+    setIsRevealed(false);
   };
 
   const handleCopy = () => {
@@ -66,6 +72,8 @@ export function BrokerManagementScreen() {
   };
 
   const handleRegister = async () => {
+    setRegisterLoading(true);
+    setError("");
     try {
       const broker = await adminApi.createBroker({
         broker_name: formValues.brokerName,
@@ -78,6 +86,8 @@ export function BrokerManagementScreen() {
       setModalState("registerKey");
     } catch (requestError) {
       setError(normalizeApiError(requestError).message);
+    } finally {
+      setRegisterLoading(false);
     }
   };
 
@@ -100,6 +110,8 @@ export function BrokerManagementScreen() {
     if (!selectedBrokerCode) {
       return;
     }
+    setRotateLoading(true);
+    setError("");
     try {
       const broker = await adminApi.rotateBrokerKey(selectedBrokerCode);
       setTransientApiKey(broker.api_key ?? "brk_live_****************");
@@ -107,6 +119,8 @@ export function BrokerManagementScreen() {
       await loadBrokers();
     } catch (requestError) {
       setError(normalizeApiError(requestError).message);
+    } finally {
+      setRotateLoading(false);
     }
   };
 
@@ -130,7 +144,11 @@ export function BrokerManagementScreen() {
             <Skeleton height={56} />
           </div>
         ) : brokers.length === 0 ? (
-          <ErrorCard message="No brokers registered yet." />
+          <EmptyState
+            title="No Brokers Registered"
+            description="There are currently no active brokers registered in the system."
+            action={<Button onClick={() => setModalState("register")}>Register Broker</Button>}
+          />
         ) : (
           <div className="if-table-wrap">
             <table className="if-data-table">
@@ -222,26 +240,112 @@ export function BrokerManagementScreen() {
             <Button onClick={closeModal} variant="ghost">
               Cancel
             </Button>
-            <Button onClick={() => void handleRegister()}>Register</Button>
+            <Button onClick={() => void handleRegister()} loading={registerLoading}>Register</Button>
           </div>
         </Modal>
       ) : null}
 
       {modalState === "registerKey" || modalState === "rotateKey" ? (
         <Modal width="wide">
-          <div className="if-warning-banner">
-            Save this API key now. It will not be shown again.
+          <div
+            className="if-warning-banner"
+            style={{
+              background: "rgba(245, 158, 11, 0.1)",
+              border: "1px solid rgba(245, 158, 11, 0.25)",
+              borderRadius: "var(--radius-sm)",
+              padding: "12px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              color: "var(--if-warning)",
+              marginBottom: "16px",
+            }}
+          >
+            <AlertTriangle size={18} style={{ color: "var(--if-warning)" }} />
+            <span style={{ fontSize: "14px", fontWeight: "500" }}>
+              Save this API key now. It will not be shown again.
+            </span>
           </div>
-          <div className="if-key-reveal-card">
-            <div className="if-key-row">
-              <div className="if-key-text if-mono">{transientApiKey ?? "brk_live_****************"}</div>
-              <Button iconOnly onClick={handleCopy} variant="ghost">
+          <div
+            className="if-key-display-field"
+            style={{
+              background: "rgba(0, 0, 0, 0.3)",
+              border: "1px solid var(--if-border)",
+              fontFamily: "var(--fs-mono)",
+              fontSize: "14px",
+              color: "var(--if-text-1)",
+              padding: "12px 16px",
+              borderRadius: "var(--radius-sm)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "20px",
+              position: "relative",
+            }}
+          >
+            <span style={{ wordBreak: "break-all" }}>
+              {isRevealed
+                ? (transientApiKey ?? "")
+                : (transientApiKey ? "brk_live_" + "•".repeat(14) : "brk_live_•••••••••••••")}
+            </span>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <button
+                onClick={() => setIsRevealed(!isRevealed)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--if-text-2)",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                type="button"
+                aria-label={isRevealed ? "Hide key" : "Reveal key"}
+              >
+                {isRevealed ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+              <button
+                onClick={() => {
+                  if (transientApiKey) {
+                    navigator.clipboard.writeText(transientApiKey);
+                    handleCopy();
+                  }
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: copied ? "var(--if-success)" : "var(--if-text-2)",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  position: "relative",
+                }}
+                type="button"
+                aria-label="Copy key"
+              >
                 {copied ? <Check size={18} /> : <Copy size={18} />}
-              </Button>
-            </div>
-            <div className="if-key-hint">
-              <KeyRound size={16} />
-              This key is not cached after the modal is closed.
+                {copied && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      bottom: "100%",
+                      right: "50%",
+                      transform: "translateX(50%) translateY(-8px)",
+                      background: "var(--if-charcoal)",
+                      color: "var(--if-text-inverse)",
+                      fontSize: "12px",
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      whiteSpace: "nowrap",
+                      border: "1px solid var(--if-border)",
+                    }}
+                  >
+                    Copied!
+                  </span>
+                )}
+              </button>
             </div>
           </div>
           <div className="if-modal-footer">
@@ -259,9 +363,9 @@ export function BrokerManagementScreen() {
             <Button onClick={closeModal} variant="ghost">
               Cancel
             </Button>
-            <button className="if-button if-button-danger" onClick={() => void handleRotateKey()} type="button">
+            <Button className="if-button-danger" onClick={() => void handleRotateKey()} loading={rotateLoading}>
               Rotate Key
-            </button>
+            </Button>
           </div>
         </Modal>
       ) : null}

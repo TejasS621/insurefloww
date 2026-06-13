@@ -1,5 +1,5 @@
-import { ArrowRight, CircleDot } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowRight, CircleDot, ClipboardList, ListOrdered, Shield, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ErrorCard } from "../../components/ui/ErrorCard";
 import { Skeleton } from "../../components/ui/Skeleton";
@@ -9,53 +9,71 @@ import { adminApi, type AdminDashboardStats } from "../../services/api/admin";
 import { normalizeApiError } from "../../utils/apiErrors";
 import { formatCurrencyINR } from "../../utils/formatters";
 
+interface AdminDashboardScreenProps {
+  onNavigate: (screen: "dashboard" | "brokers" | "transactions" | "policies" | "payments" | "tickets") => void;
+}
+
 /**
  * AdminDashboardScreen fetches operational stats and recent transactions on mount.
  * Each section keeps its own loading and error state so one failure does not block the page.
  */
-export function AdminDashboardScreen() {
+export function AdminDashboardScreen({ onNavigate }: AdminDashboardScreenProps) {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState("");
   const [transactions, setTransactions] = useState<Array<Record<string, string | number>>>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   const [transactionsError, setTransactionsError] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "SUCCESS" | "FAILED">("ALL");
 
-  const loadDashboard = async () => {
+  const loadDashboardStats = async () => {
     setStatsLoading(true);
-    setTransactionsLoading(true);
     setStatsError("");
+    try {
+      const statsResult = await adminApi.getDashboard();
+      setStats(statsResult);
+    } catch (error) {
+      setStatsError(normalizeApiError(error).message);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const fetchTransactions = async (status: string) => {
+    setTransactionsLoading(true);
     setTransactionsError("");
-
-    const transactionParams = new URLSearchParams({
-      page: "1",
-      limit: "5",
-      status: "ALL",
-    });
-
-    const [statsResult, transactionsResult] = await Promise.allSettled([
-      adminApi.getDashboard(),
-      adminApi.listTransactions(transactionParams),
-    ]);
-
-    if (statsResult.status === "fulfilled") {
-      setStats(statsResult.value);
-    } else {
-      setStatsError(normalizeApiError(statsResult.reason).message);
+    try {
+      const transactionParams = new URLSearchParams({
+        page: "1",
+        limit: "5",
+        status: status,
+      });
+      const result = await adminApi.listTransactions(transactionParams);
+      setTransactions(result.items);
+    } catch (error) {
+      setTransactionsError(normalizeApiError(error).message);
+    } finally {
+      setTransactionsLoading(false);
     }
-    setStatsLoading(false);
-
-    if (transactionsResult.status === "fulfilled") {
-      setTransactions(transactionsResult.value.items);
-    } else {
-      setTransactionsError(normalizeApiError(transactionsResult.reason).message);
-    }
-    setTransactionsLoading(false);
   };
 
   useEffect(() => {
-    void loadDashboard();
+    void loadDashboardStats();
   }, []);
+
+  useEffect(() => {
+    void fetchTransactions(statusFilter);
+  }, [statusFilter]);
+
+  const quickLinks = useMemo(
+    () => [
+      { label: "Manage Brokers", icon: Shield, screen: "brokers" as const },
+      { label: "View Tickets", icon: ClipboardList, screen: "tickets" as const },
+      { label: "Audit Logs", icon: ListOrdered, screen: "transactions" as const },
+      { label: "Manage Customers", icon: UserRound, screen: "dashboard" as const },
+    ],
+    [],
+  );
 
   return (
     <div className="if-screen-stack">
@@ -69,17 +87,14 @@ export function AdminDashboardScreen() {
           </>
         ) : statsError ? (
           <div className="if-form-grid-span">
-            <ErrorCard message={statsError} onRetry={() => void loadDashboard()} />
+            <ErrorCard message={statsError} onRetry={() => void loadDashboardStats()} />
           </div>
         ) : (
           <>
-            <StatCard label="Total Applications" value={String(stats?.total_applications ?? 0)} variant="navy" />
-            <StatCard label="Active Policies" value={String(stats?.total_policies ?? 0)} />
-            <StatCard label="Revenue Today" value={formatCurrencyINR(485000)} variant="navy" />
-            <article className="if-stat-card if-stat-card-warning">
-              <p className="if-stat-label">Pending Payments</p>
-              <p className="if-stat-value">{stats?.pending_underwriting_reviews ?? 0}</p>
-            </article>
+            <StatCard label="Total Applications" value={String(stats?.total_applications ?? 0)} variant="stat-1" />
+            <StatCard label="Active Policies" value={String(stats?.total_policies ?? 0)} variant="stat-2" />
+            <StatCard label="Revenue Today" value={formatCurrencyINR(485000)} variant="stat-3" />
+            <StatCard label="Pending Payments" value={String(stats?.pending_underwriting_reviews ?? 0)} variant="stat-4" />
           </>
         )}
       </section>
@@ -89,9 +104,40 @@ export function AdminDashboardScreen() {
           <div className="if-section-heading">
             <div>
               <p className="if-eyebrow">Transactions</p>
-              <h2>Recent Transactions</h2>
+              <h2>Recent transactions</h2>
             </div>
+            <button
+              className="if-link-button"
+              onClick={() => onNavigate("transactions")}
+              style={{ color: "var(--if-violet)", display: "flex", alignItems: "center", gap: "4px" }}
+              type="button"
+            >
+              View all →
+            </button>
           </div>
+
+          <div className="if-pill-group" style={{ marginBottom: "var(--space-4)" }}>
+            {(["ALL", "PENDING", "SUCCESS", "FAILED"] as const).map((filter) => (
+              <button
+                key={filter}
+                className={`if-pill ${statusFilter === filter ? "is-active" : ""}`}
+                onClick={() => setStatusFilter(filter)}
+                style={
+                  statusFilter === filter
+                    ? {
+                        background: "rgba(124, 58, 237, 0.15)",
+                        color: "var(--if-text-1)",
+                        borderColor: "var(--if-violet)",
+                      }
+                    : undefined
+                }
+                type="button"
+              >
+                {filter.charAt(0) + filter.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+
           {transactionsLoading ? (
             <div className="if-skeleton-stack">
               <Skeleton height={56} />
@@ -99,7 +145,7 @@ export function AdminDashboardScreen() {
               <Skeleton height={56} />
             </div>
           ) : transactionsError ? (
-            <ErrorCard message={transactionsError} onRetry={() => void loadDashboard()} />
+            <ErrorCard message={transactionsError} onRetry={() => void fetchTransactions(statusFilter)} />
           ) : (
             <>
               <div className="if-table-wrap">
@@ -122,7 +168,15 @@ export function AdminDashboardScreen() {
                         <td>{String(transaction.insurance_type ?? "Policy")}</td>
                         <td>{formatCurrencyINR(Number(transaction.amount ?? 0))}</td>
                         <td>
-                          <StatusBadge status="processing">
+                          <StatusBadge
+                            status={
+                              String(transaction.status).toUpperCase() === "SUCCESS"
+                                ? "issued"
+                                : String(transaction.status).toUpperCase() === "PENDING"
+                                  ? "pending"
+                                  : "failed"
+                            }
+                          >
                             {String(transaction.status ?? "PROCESSING")}
                           </StatusBadge>
                         </td>
@@ -131,15 +185,6 @@ export function AdminDashboardScreen() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-              <div className="if-pagination-footer">
-                <button className="if-link-button" type="button">
-                  Previous
-                </button>
-                <span>Page 1</span>
-                <button className="if-link-button" type="button">
-                  Next
-                </button>
               </div>
             </>
           )}
@@ -153,11 +198,29 @@ export function AdminDashboardScreen() {
                 <h2>Operations shortcuts</h2>
               </div>
             </div>
-            <div className="if-link-list">
-              {["Manage Brokers", "View All Tickets", "Audit Logs", "Manage Customers"].map((item) => (
-                <button className="if-link-row" key={item} type="button">
-                  <span>{item}</span>
-                  <ArrowRight size={16} />
+            <div className="if-link-list" style={{ display: "grid", gap: 0 }}>
+              {quickLinks.map((item) => (
+                <button
+                  className="if-link-row"
+                  key={item.label}
+                  onClick={() => onNavigate(item.screen)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 16px",
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: "1px solid var(--if-border)",
+                    cursor: "pointer",
+                  }}
+                  type="button"
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <item.icon size={20} style={{ color: "var(--if-violet)" }} />
+                    <span style={{ color: "var(--if-text-1)", fontWeight: "500" }}>{item.label}</span>
+                  </div>
+                  <ArrowRight size={16} style={{ color: "var(--if-text-2)" }} />
                 </button>
               ))}
             </div>
@@ -170,25 +233,25 @@ export function AdminDashboardScreen() {
                 <h2>Platform health</h2>
               </div>
             </div>
-            <div className="if-status-stack">
-              <div className="if-system-status-row">
-                <span>Provider Backend</span>
-                <span className="if-system-state is-green">
-                  <CircleDot size={10} />
+            <div className="if-status-stack" style={{ display: "grid", gap: "12px" }}>
+              <div className="if-system-status-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "var(--if-text-1)" }}>Provider Backend</span>
+                <span className="if-system-state" style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--if-text-2)" }}>
+                  <CircleDot size={10} style={{ color: "#10B981" }} />
                   Online
                 </span>
               </div>
-              <div className="if-system-status-row">
-                <span>Payment Gateway</span>
-                <span className="if-system-state is-green">
-                  <CircleDot size={10} />
+              <div className="if-system-status-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "var(--if-text-1)" }}>Payment Gateway</span>
+                <span className="if-system-state" style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--if-text-2)" }}>
+                  <CircleDot size={10} style={{ color: "#10B981" }} />
                   Online
                 </span>
               </div>
-              <div className="if-system-status-row">
-                <span>Webhook Retry</span>
-                <span className="if-system-state is-amber">
-                  <CircleDot size={10} />
+              <div className="if-system-status-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "var(--if-text-1)" }}>Webhook Retry</span>
+                <span className="if-system-state" style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--if-text-2)" }}>
+                  <CircleDot size={10} style={{ color: "#F59E0B" }} />
                   2 pending
                 </span>
               </div>

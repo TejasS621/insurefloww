@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 class Gender(str, Enum):
@@ -52,6 +52,19 @@ class PersonalDetailsSchema(BaseModel):
     city: str = Field(..., min_length=2)
     state: str = Field(..., min_length=2)
     pincode: str = Field(..., min_length=4, max_length=10)
+    gstin: str | None = None
+    politically_exposed_person: bool = False
+
+    @field_validator("date_of_birth", mode="before")
+    @classmethod
+    def parse_date_of_birth(cls, value: object) -> object:
+        """Accept both ISO and DD/MM/YYYY date strings from the frontend."""
+        if isinstance(value, str):
+            trimmed = value.strip()
+            if "/" in trimmed:
+                day, month, year = trimmed.split("/")
+                return date(int(year), int(month), int(day))
+        return value
 
 
 class HealthDetailsSchema(BaseModel):
@@ -59,15 +72,22 @@ class HealthDetailsSchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    height_cm: float | None = Field(default=None, ge=0)
-    weight_kg: float | None = Field(default=None, ge=0)
-    calculated_bmi: float | None = Field(default=None, ge=0)
+    height_cm: float | None = Field(default=None, ge=50, le=250)
+    weight_kg: float | None = Field(default=None, ge=10, le=300)
+    calculated_bmi: float | None = Field(default=None, ge=0, le=100)
     smoker: bool = False
     diabetes: bool = False
     blood_pressure: bool = False
     heart_ailments: bool = False
     pre_existing_disease: bool = False
     other_conditions: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_height_weight_pair(self) -> "HealthDetailsSchema":
+        """Ensure anthropometric fields arrive together for underwriting requests."""
+        if (self.height_cm is None) != (self.weight_kg is None):
+            raise ValueError("Height and weight must be provided together.")
+        return self
 
 
 class CoverageDetailsSchema(BaseModel):

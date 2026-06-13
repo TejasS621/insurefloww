@@ -24,6 +24,7 @@ import { AdminRecordsScreen } from "./pages/admin/AdminRecordsScreen";
 import { AdminTicketsScreen } from "./pages/admin/AdminTicketsScreen";
 import { BrokerManagementScreen } from "./pages/admin/BrokerManagementScreen";
 import { ApplicationFlowScreen } from "./pages/application/ApplicationFlowScreen";
+import { CustomerLoginScreen } from "./pages/auth/CustomerLoginScreen";
 import { CustomerDashboardScreen } from "./pages/dashboard/CustomerDashboardScreen";
 import { LandingScreen } from "./pages/landing/LandingScreen";
 import { PaymentInitiationScreen } from "./pages/payment/PaymentInitiationScreen";
@@ -49,14 +50,36 @@ import { normalizeApiError } from "./utils/apiErrors";
 import { openPaymentCheckout } from "./utils/payment";
 
 type PortalMode = "customer" | "admin";
-type CustomerScreen = "landing" | "application" | "quotes" | "payment" | "dashboard" | "support";
+type CustomerScreen = "landing" | "login" | "application" | "quotes" | "payment" | "dashboard" | "support";
 type AdminScreen = "dashboard" | "brokers" | "transactions" | "policies" | "payments" | "tickets";
 type InsuranceType = "HEALTH" | "LIFE" | "VEHICLE" | "TRAVEL" | "HOME";
+type CustomerLoginTarget = "application" | "dashboard" | "support";
+
+interface PaymentBreakdown {
+  insuranceType: InsuranceType;
+  providerName: string;
+  planName: string;
+  basePremium: number;
+  taxAmount: number;
+  addonAmount: number;
+  totalAmount: number;
+  selectedAddons: Array<{
+    addon_code: string;
+    addon_name: string;
+    addon_price: number;
+  }>;
+}
 
 interface SectionState<T> {
   loading: boolean;
   error?: string;
   data: T;
+}
+
+interface AppHistoryState {
+  portalMode: PortalMode;
+  customerScreen: CustomerScreen;
+  adminScreen: AdminScreen;
 }
 
 /**
@@ -73,12 +96,16 @@ export default function App() {
   const [otpRequested, setOtpRequested] = useState(false);
   const [otpError, setOtpError] = useState("");
   const [formError, setFormError] = useState("");
+  const [customerMobileNumber, setCustomerMobileNumber] = useState("");
+  const [customerOtpCode, setCustomerOtpCode] = useState("");
+  const [customerLoginTarget, setCustomerLoginTarget] = useState<CustomerLoginTarget>("application");
   const [resumedApplication, setResumedApplication] = useState<ApplicationSummary | null>(null);
   const [transactionReference, setTransactionReference] = useState<string | null>(null);
   const [quotes, setQuotes] = useState<ApplicationQuote[]>([]);
   const [quotesLoading, setQuotesLoading] = useState(false);
   const [quotesError, setQuotesError] = useState("");
   const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(null);
+  const [paymentBreakdown, setPaymentBreakdown] = useState<PaymentBreakdown | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "initiating" | "verifying" | "failed" | "success">("idle");
   const [paymentError, setPaymentError] = useState("");
   const [applicationsState, setApplicationsState] = useState<SectionState<ApplicationSummary[]>>({
@@ -95,6 +122,68 @@ export default function App() {
   });
   const [ticketSubmitError, setTicketSubmitError] = useState("");
 
+  // Phase 4 states
+  const [otpAttemptsRemaining, setOtpAttemptsRemaining] = useState(3);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [paymentCountdown, setPaymentCountdown] = useState(30);
+  const [tooManyRequestsMessage, setTooManyRequestsMessage] = useState<string | null>(null);
+
+  const buildHistoryState = (
+    overrides: Partial<AppHistoryState> = {},
+  ): AppHistoryState => ({
+    portalMode,
+    customerScreen,
+    adminScreen,
+    ...overrides,
+  });
+
+  const syncHistory = (
+    nextState: AppHistoryState,
+    options?: { replace?: boolean },
+  ) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (options?.replace) {
+      window.history.replaceState(nextState, "");
+      return;
+    }
+    window.history.pushState(nextState, "");
+  };
+
+  const navigateCustomerScreen = (
+    nextScreen: CustomerScreen,
+    options?: { replace?: boolean },
+  ) => {
+    setCustomerScreen(nextScreen);
+    syncHistory(buildHistoryState({ customerScreen: nextScreen, portalMode: "customer" }), options);
+  };
+
+  const navigateAdminScreen = (
+    nextScreen: AdminScreen,
+    options?: { replace?: boolean },
+  ) => {
+    setPortalMode("admin");
+    setAdminScreen(nextScreen);
+    syncHistory(buildHistoryState({ portalMode: "admin", adminScreen: nextScreen }), options);
+  };
+
+  const navigatePortalMode = (
+    nextMode: PortalMode,
+    options?: { replace?: boolean },
+  ) => {
+    setPortalMode(nextMode);
+    syncHistory(buildHistoryState({ portalMode: nextMode }), options);
+  };
+
+  const checkRateLimit = (error: unknown) => {
+    const apiError = normalizeApiError(error);
+    if (apiError.status === 429) {
+      setTooManyRequestsMessage(apiError.message);
+      window.setTimeout(() => setTooManyRequestsMessage(null), 8000);
+    }
+  };
+
   const sendOtpAction = useAsyncAction();
   const verifyOtpAction = useAsyncAction();
   const submitApplicationAction = useAsyncAction();
@@ -110,88 +199,166 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const initialState = window.history.state as AppHistoryState | null;
+    if (
+      !initialState ||
+      !initialState.portalMode ||
+      !initialState.customerScreen ||
+      !initialState.adminScreen
+    ) {
+      syncHistory(buildHistoryState(), { replace: true });
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as AppHistoryState | null;
+      if (!state) {
+        return;
+      }
+      setPortalMode(state.portalMode);
+      setCustomerScreen(state.customerScreen);
+      setAdminScreen(state.adminScreen);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
     if (!customerToken && (customerScreen === "dashboard" || customerScreen === "support")) {
-      setCustomerScreen("landing");
+      setCustomerLoginTarget(customerScreen === "support" ? "support" : "dashboard");
+      navigateCustomerScreen("login", { replace: true });
     }
   }, [customerScreen, customerToken]);
+
+  const resetCustomerAuthFlow = () => {
+    setOtpRequested(false);
+    setOtpError("");
+    setCustomerOtpCode("");
+    setOtpAttemptsRemaining(3);
+  };
+
+  const openCustomerLogin = (target: CustomerLoginTarget) => {
+    resetCustomerAuthFlow();
+    setCustomerLoginTarget(target);
+    navigateCustomerScreen("login");
+  };
 
   const customerNavItems = useMemo(
     () => [
       {
         label: "Home",
         icon: Home,
-        active: customerScreen === "landing" || customerScreen === "application" || customerScreen === "quotes" || customerScreen === "payment",
-        onClick: () => setCustomerScreen("landing"),
+        active:
+          customerScreen === "landing" ||
+          customerScreen === "login" ||
+          customerScreen === "application" ||
+          customerScreen === "quotes" ||
+          customerScreen === "payment",
+        onClick: () => navigateCustomerScreen("landing"),
       },
       {
         label: "Policies",
         icon: FileText,
         active: customerScreen === "dashboard",
-        onClick: () => setCustomerScreen("dashboard"),
+        onClick: () => {
+          if (customerToken) {
+            navigateCustomerScreen("dashboard");
+            return;
+          }
+          openCustomerLogin("dashboard");
+        },
       },
       {
         label: "Tickets",
         icon: LifeBuoy,
         active: customerScreen === "support",
-        onClick: () => setCustomerScreen("support"),
+        onClick: () => {
+          if (customerToken) {
+            navigateCustomerScreen("support");
+            return;
+          }
+          openCustomerLogin("support");
+        },
       },
       {
         label: "Profile",
         icon: UserRound,
         active: false,
-        onClick: () => setCustomerScreen("dashboard"),
+        onClick: () => navigateCustomerScreen("dashboard"),
       },
     ],
-    [customerScreen],
+    [customerScreen, customerToken],
   );
 
   const adminNavItems = useMemo(
     () => [
-      { label: "Dashboard", icon: LayoutDashboard, active: adminScreen === "dashboard", onClick: () => setAdminScreen("dashboard") },
-      { label: "Brokers", icon: Blocks, active: adminScreen === "brokers", onClick: () => setAdminScreen("brokers") },
-      { label: "Transactions", icon: ListOrdered, active: adminScreen === "transactions", onClick: () => setAdminScreen("transactions") },
-      { label: "Policies", icon: FileStack, active: adminScreen === "policies", onClick: () => setAdminScreen("policies") },
-      { label: "Payments", icon: CreditCard, active: adminScreen === "payments", onClick: () => setAdminScreen("payments") },
-      { label: "Tickets", icon: ClipboardList, active: adminScreen === "tickets", onClick: () => setAdminScreen("tickets") },
+      { label: "Dashboard", icon: LayoutDashboard, active: adminScreen === "dashboard", onClick: () => navigateAdminScreen("dashboard") },
+      { label: "Brokers", icon: Blocks, active: adminScreen === "brokers", onClick: () => navigateAdminScreen("brokers") },
+      { label: "Transactions", icon: ListOrdered, active: adminScreen === "transactions", onClick: () => navigateAdminScreen("transactions") },
+      { label: "Policies", icon: FileStack, active: adminScreen === "policies", onClick: () => navigateAdminScreen("policies") },
+      { label: "Payments", icon: CreditCard, active: adminScreen === "payments", onClick: () => navigateAdminScreen("payments") },
+      { label: "Tickets", icon: ClipboardList, active: adminScreen === "tickets", onClick: () => navigateAdminScreen("tickets") },
     ],
     [adminScreen],
   );
+
+  const customerDisplayName = useMemo(() => {
+    const source = applicationsState.data[0] ?? resumedApplication;
+    if (!source) {
+      return "Customer";
+    }
+    return [source.personal_details.first_name, source.personal_details.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || "Customer";
+  }, [applicationsState.data, resumedApplication]);
+
+  const customerInitials = useMemo(() => {
+    return customerDisplayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("")
+      .slice(0, 2) || "CU";
+  }, [customerDisplayName]);
 
   const loadDashboardData = async () => {
     setApplicationsState((current) => ({ ...current, loading: true, error: undefined }));
     setPoliciesState((current) => ({ ...current, loading: true, error: undefined }));
     setTicketsState((current) => ({ ...current, loading: true, error: undefined }));
 
-    const [applicationsResult, policiesResult, ticketsResult] = await Promise.allSettled([
-      customerApi.getMyApplications(),
-      customerApi.getMyPolicies(),
-      customerApi.getMyTickets(),
+    await Promise.all([
+      customerApi.getMyApplications()
+        .then((data) => setApplicationsState({ loading: false, data }))
+        .catch((err) => {
+          setApplicationsState({
+            loading: false,
+            data: [],
+            error: normalizeApiError(err).message,
+          });
+          checkRateLimit(err);
+        }),
+      customerApi.getMyPolicies()
+        .then((data) => setPoliciesState({ loading: false, data }))
+        .catch((err) => {
+          setPoliciesState({
+            loading: false,
+            data: [],
+            error: normalizeApiError(err).message,
+          });
+          checkRateLimit(err);
+        }),
+      customerApi.getMyTickets()
+        .then((data) => setTicketsState({ loading: false, data }))
+        .catch((err) => {
+          setTicketsState({
+            loading: false,
+            data: [],
+            error: normalizeApiError(err).message,
+          });
+          checkRateLimit(err);
+        }),
     ]);
-
-    setApplicationsState({
-      loading: false,
-      data: applicationsResult.status === "fulfilled" ? applicationsResult.value : [],
-      error:
-        applicationsResult.status === "rejected"
-          ? normalizeApiError(applicationsResult.reason).message
-          : undefined,
-    });
-    setPoliciesState({
-      loading: false,
-      data: policiesResult.status === "fulfilled" ? policiesResult.value : [],
-      error:
-        policiesResult.status === "rejected"
-          ? normalizeApiError(policiesResult.reason).message
-          : undefined,
-    });
-    setTicketsState({
-      loading: false,
-      data: ticketsResult.status === "fulfilled" ? ticketsResult.value : [],
-      error:
-        ticketsResult.status === "rejected"
-          ? normalizeApiError(ticketsResult.reason).message
-          : undefined,
-    });
   };
 
   useEffect(() => {
@@ -222,8 +389,10 @@ export default function App() {
         await customerApi.requestOtp(mobileNumber);
         setOtpRequested(true);
         setOtpError("");
+        setOtpAttemptsRemaining(3);
       } catch (error) {
         setOtpError(normalizeApiError(error).message);
+        checkRateLimit(error);
       }
     });
   };
@@ -234,8 +403,13 @@ export default function App() {
         const payload = await customerApi.verifyOtp(mobileNumber, otpCode);
         authStore.setToken("customer", payload.token.access_token);
         setOtpError("");
+        setOtpAttemptsRemaining(3);
+        navigateCustomerScreen(customerLoginTarget);
       } catch (error) {
-        setOtpError("Incorrect code. Please try again.");
+        const remaining = Math.max(0, otpAttemptsRemaining - 1);
+        setOtpAttemptsRemaining(remaining);
+        setOtpError(`Incorrect code. ${remaining} attempts remaining.`);
+        checkRateLimit(error);
         throw error;
       }
     });
@@ -246,16 +420,36 @@ export default function App() {
   ) => {
     await submitApplicationAction.run(async () => {
       setFormError("");
+      setFieldErrors({});
       setQuotesLoading(true);
       setQuotesError("");
       try {
         const application = await customerApi.createApplication(payload);
+        if (!application.quotes.length) {
+          setFormError(
+            "Application was saved, but no quotes were returned yet. Please check that the quote service is running and try again.",
+          );
+          return;
+        }
         setResumedApplication(application.quotes.length > 0 ? application : null);
+        setPaymentSession(null);
+        setPaymentBreakdown(null);
+        setPaymentStatus("idle");
+        setPaymentError("");
         setTransactionReference(application.transaction_reference);
         setQuotes(application.quotes);
-        setCustomerScreen("quotes");
+        navigateCustomerScreen("quotes");
       } catch (error) {
-        setFormError(normalizeApiError(error).message);
+        const apiError = normalizeApiError(error);
+        if (apiError.status === 422) {
+          setFieldErrors(apiError.fieldErrors);
+          if (!Object.keys(apiError.fieldErrors).length) {
+            setFormError(apiError.message);
+          }
+        } else {
+          setFormError(apiError.message);
+        }
+        checkRateLimit(error);
       } finally {
         setQuotesLoading(false);
       }
@@ -272,11 +466,32 @@ export default function App() {
       );
       try {
         await customerApi.selectQuote(quoteId, selectedAddons);
-        setCustomerScreen("payment");
+        const selectedQuote = previousQuotes.find((quote) => quote.quote_id === quoteId);
+        if (selectedQuote) {
+          const selectedAddonObjects = selectedQuote.available_addons.filter((addon) =>
+            selectedAddons.includes(addon.addon_code),
+          );
+          const addonAmount = selectedAddonObjects.reduce((total, addon) => total + addon.addon_price, 0);
+          setPaymentSession(null);
+          setPaymentBreakdown({
+            insuranceType: selectedInsuranceType,
+            providerName: selectedQuote.provider_name,
+            planName: selectedQuote.plan_name,
+            basePremium: selectedQuote.base_premium,
+            taxAmount: selectedQuote.tax_amount,
+            addonAmount,
+            totalAmount: selectedQuote.total_premium + addonAmount,
+            selectedAddons: selectedAddonObjects,
+          });
+        }
+        setPaymentStatus("idle");
+        setPaymentError("");
+        navigateCustomerScreen("payment");
         setQuotesError("");
       } catch (error) {
         setQuotes(previousQuotes);
         setQuotesError(normalizeApiError(error).message);
+        checkRateLimit(error);
       }
     });
   };
@@ -288,7 +503,9 @@ export default function App() {
         const status = await customerApi.getPaymentStatus(reference);
         if (status.payment_status === "SUCCESS" || status.transaction_status === "POLICY_ISSUED") {
           setPaymentStatus("success");
-          setCustomerScreen("dashboard");
+          if (customerToken) {
+            navigateCustomerScreen("dashboard");
+          }
           return;
         }
         if (status.payment_status === "FAILED") {
@@ -297,11 +514,32 @@ export default function App() {
           return;
         }
       } catch (error) {
-        setPaymentError(normalizeApiError(error).message);
+        checkRateLimit(error);
       }
     }
     setPaymentStatus("failed");
     setPaymentError("Payment verification timed out. Please retry.");
+  };
+
+  const startPaymentVerification = async (reference: string) => {
+    setPaymentStatus("verifying");
+    setPaymentError("");
+    setPaymentCountdown(30);
+    const timer = window.setInterval(() => {
+      setPaymentCountdown((curr) => {
+        if (curr <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return curr - 1;
+      });
+    }, 1000);
+
+    try {
+      await pollPaymentStatus(reference);
+    } finally {
+      window.clearInterval(timer);
+    }
   };
 
   const handlePaymentInitiation = async () => {
@@ -316,12 +554,27 @@ export default function App() {
       try {
         const session = await customerApi.initiatePayment(transactionReference);
         setPaymentSession(session);
-        await openPaymentCheckout(session);
-        setPaymentStatus("verifying");
-        await pollPaymentStatus(transactionReference);
+        setPaymentBreakdown((current) =>
+          current
+            ? {
+                ...current,
+                totalAmount: session.amount,
+              }
+            : current,
+        );
+        await openPaymentCheckout(
+          session,
+          async () => {
+            await startPaymentVerification(transactionReference);
+          },
+          () => {
+            void startPaymentVerification(transactionReference);
+          }
+        );
       } catch (error) {
         setPaymentStatus("failed");
         setPaymentError(normalizeApiError(error).message);
+        checkRateLimit(error);
       }
     });
   };
@@ -357,8 +610,8 @@ export default function App() {
     return (
       <div>
         <div className="if-portal-switch">
-          <Button onClick={() => setPortalMode("customer")} variant="ghost">
-            Customer Portal
+              <Button onClick={() => navigatePortalMode("customer")} variant="ghost">
+                Customer Portal
           </Button>
           <Button>Admin Portal</Button>
         </div>
@@ -381,7 +634,7 @@ export default function App() {
               <button className="if-avatar-button" type="button" aria-label="Open admin menu">
                 AD
               </button>
-              <Button onClick={() => setPortalMode("customer")} variant="ghost">
+              <Button onClick={() => navigatePortalMode("customer")} variant="ghost">
                 Customer
               </Button>
             </>
@@ -392,7 +645,9 @@ export default function App() {
           items: adminNavItems,
         }}
       >
-        {adminScreen === "dashboard" ? <AdminDashboardScreen /> : null}
+        {adminScreen === "dashboard" ? (
+          <AdminDashboardScreen onNavigate={(screen) => navigateAdminScreen(screen)} />
+        ) : null}
         {adminScreen === "brokers" ? <BrokerManagementScreen /> : null}
         {adminScreen === "transactions" ? <AdminRecordsScreen view="transactions" /> : null}
         {adminScreen === "policies" ? <AdminRecordsScreen view="policies" /> : null}
@@ -408,7 +663,7 @@ export default function App() {
         notificationCount: customerToken ? 2 : undefined,
         rightSlot: (
           <>
-            <Button onClick={() => setPortalMode("admin")} variant="ghost">
+            <Button onClick={() => navigatePortalMode("admin")} variant="ghost">
               Admin
             </Button>
             {customerToken ? (
@@ -417,10 +672,16 @@ export default function App() {
                   <Bell size={18} />
                 </Button>
                 <button className="if-avatar-button" type="button" aria-label="Open user menu">
-                  CU
+                  {customerInitials}
                 </button>
               </>
-            ) : null}
+            ) : (
+              <Button
+                onClick={() => openCustomerLogin("dashboard")}
+              >
+                Customer Login
+              </Button>
+            )}
           </>
         ),
       }}
@@ -428,28 +689,92 @@ export default function App() {
         items: customerNavItems,
       }}
     >
+      {tooManyRequestsMessage && (
+        <div
+          className="if-warning-banner"
+          style={{
+            background: "rgba(245, 158, 11, 0.15)",
+            border: "1px solid var(--if-warning)",
+            borderRadius: "var(--radius-sm)",
+            color: "var(--if-warning)",
+            padding: "12px 16px",
+            fontSize: "14px",
+            fontWeight: 500,
+            textAlign: "center",
+            marginBottom: "20px",
+          }}
+        >
+          Warning: {tooManyRequestsMessage}
+        </div>
+      )}
+
+      {paymentStatus === "verifying" && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "var(--if-overlay-bg)",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "24px",
+          }}
+        >
+          <div className="if-spinner-violet" />
+          <h2 style={{ color: "var(--if-text-inverse)", fontSize: "24px", fontWeight: 600, margin: 0 }}>
+            Verifying payment...
+          </h2>
+          <div
+            style={{
+              fontFamily: "var(--fs-mono)",
+              fontSize: "36px",
+              color: "var(--if-cyan)",
+              fontWeight: 700,
+            }}
+          >
+            {paymentCountdown}s
+          </div>
+        </div>
+      )}
+
       {customerScreen === "landing" ? (
         <LandingScreen
+          onLogin={() => openCustomerLogin("dashboard")}
           onSelectType={(type) => {
             setSelectedInsuranceType(type.toUpperCase() as InsuranceType);
-            setCustomerScreen("application");
+            navigateCustomerScreen("application");
           }}
+        />
+      ) : null}
+      {customerScreen === "login" ? (
+        <CustomerLoginScreen
+          isSendingOtp={sendOtpAction.isLoading}
+          isVerifyingOtp={verifyOtpAction.isLoading}
+          mobileNumber={customerMobileNumber}
+          onBack={() => navigateCustomerScreen("landing")}
+          onMobileNumberChange={setCustomerMobileNumber}
+          onOtpCodeChange={setCustomerOtpCode}
+          onSendOtp={() => handleCustomerOtpRequest(customerMobileNumber)}
+          onVerifyOtp={() => handleCustomerOtpVerify(customerMobileNumber, customerOtpCode)}
+          otpCode={customerOtpCode}
+          otpError={otpError}
+          otpRequested={otpRequested}
         />
       ) : null}
       {customerScreen === "application" ? (
         <ApplicationFlowScreen
           formError={formError}
+          fieldErrors={fieldErrors}
           insuranceType={selectedInsuranceType}
-          isAuthenticated={Boolean(customerToken)}
-          isSendingOtp={sendOtpAction.isLoading}
+          initialMobileNumber={customerMobileNumber}
           isSubmitting={submitApplicationAction.isLoading}
-          isVerifyingOtp={verifyOtpAction.isLoading}
-          onBackToLanding={() => setCustomerScreen("landing")}
-          onSendOtp={handleCustomerOtpRequest}
+          onBackToLanding={() => navigateCustomerScreen("landing")}
           onSubmit={handleApplicationSubmit}
-          onVerifyOtp={handleCustomerOtpVerify}
-          otpError={otpError}
-          otpRequested={otpRequested}
           resumedApplication={resumedApplication}
         />
       ) : null}
@@ -458,9 +783,9 @@ export default function App() {
           error={quotesError}
           isProceeding={selectQuoteAction.isLoading}
           loading={quotesLoading}
-          onBack={() => setCustomerScreen("application")}
+          onBack={() => navigateCustomerScreen("application")}
           onProceed={handleQuoteProceed}
-          onRetry={() => setCustomerScreen("application")}
+          onRetry={() => navigateCustomerScreen("application")}
           quotes={quotes}
           transactionReference={transactionReference}
         />
@@ -468,8 +793,13 @@ export default function App() {
       {customerScreen === "payment" ? (
         <PaymentInitiationScreen
           error={paymentError}
+          isAuthenticated={Boolean(customerToken)}
+          onBackHome={() => navigateCustomerScreen("landing")}
+          onLoginToTrack={() => openCustomerLogin("dashboard")}
+          onOpenDashboard={() => navigateCustomerScreen("dashboard")}
           onProceed={handlePaymentInitiation}
           onRetry={handlePaymentInitiation}
+          paymentBreakdown={paymentBreakdown}
           paymentSession={paymentSession}
           paymentStatus={paymentStatus}
         />
@@ -480,8 +810,9 @@ export default function App() {
             ...applicationsState,
             onRetry: () => void loadDashboardData(),
           }}
+          customerDisplayName={customerDisplayName}
           onDownloadPolicy={handleDownloadPolicy}
-          onOpenSupport={() => setCustomerScreen("support")}
+          onOpenSupport={() => navigateCustomerScreen("support")}
           onViewReceipt={handleViewReceipt}
           policiesState={{
             ...policiesState,
@@ -499,7 +830,13 @@ export default function App() {
           isSubmitting={ticketAction.isLoading}
           loading={ticketsState.loading}
           onRetry={() => void loadDashboardData()}
-          onSubmit={handleSubmitTicket}
+          onSubmit={async (p) => {
+            try {
+              await handleSubmitTicket(p);
+            } catch (err) {
+              checkRateLimit(err);
+            }
+          }}
           submitError={ticketSubmitError}
           tickets={ticketsState.data}
         />

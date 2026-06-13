@@ -13,6 +13,7 @@ from backend.provider_backend.app.core.apis.schemas.requests.provider_request im
     BrokerStatusUpdateRequest,
     KeyRotationRequest,
 )
+from backend.provider_backend.app.commons.config import settings
 from backend.provider_backend.app.core.models.broker_registry_model import (
     BrokerRegistry,
     BrokerStatus,
@@ -23,6 +24,33 @@ from .service_exceptions import ConflictServiceError, NotFoundServiceError
 
 class BrokerService:
     """Manage provider-side broker registry records and credentials."""
+
+    async def ensure_integration_broker(self, engine: AIOEngine) -> BrokerRegistry:
+        """Ensure the default local integration broker exists for backend-to-backend calls."""
+        broker = await engine.find_one(
+            BrokerRegistry,
+            BrokerRegistry.broker_code == settings.integration_broker_code,
+        )
+        if broker is not None:
+            expected_hash = self._hash_api_key(settings.integration_broker_api_key)
+            if broker.api_key_hash != expected_hash:
+                broker.api_key_hash = expected_hash
+                broker.status = BrokerStatus.ACTIVE
+                broker.updated_at = datetime.now(timezone.utc)
+                await engine.save(broker)
+            return broker
+
+        broker = BrokerRegistry(
+            broker_code=settings.integration_broker_code,
+            broker_name="Main Backend Integration",
+            api_key_hash=self._hash_api_key(settings.integration_broker_api_key),
+            callback_url="http://127.0.0.1:8000/api/v1/provider-sync/webhook",
+            webhook_url="http://127.0.0.1:8000/api/v1/provider-sync/webhook",
+            status=BrokerStatus.ACTIVE,
+            created_by_admin="system",
+        )
+        await engine.save(broker)
+        return broker
 
     async def register_broker(
         self,

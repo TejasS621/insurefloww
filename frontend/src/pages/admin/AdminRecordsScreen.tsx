@@ -12,6 +12,7 @@ import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { REQUEST_DEBOUNCE_MS } from "../../services/api/config";
 import { adminApi } from "../../services/api/admin";
 import { normalizeApiError } from "../../utils/apiErrors";
+import { formatCurrencyINR } from "../../utils/formatters";
 
 type RecordView = "transactions" | "policies" | "payments";
 
@@ -36,6 +37,7 @@ export function AdminRecordsScreen({ view }: AdminRecordsScreenProps) {
   const [selectedRecord, setSelectedRecord] = useState<Record<string, string | number | null> | null>(null);
   const [detailError, setDetailError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [drawerLoading, setDrawerLoading] = useState(false);
   const debouncedSearch = useDebouncedValue(searchValue, REQUEST_DEBOUNCE_MS);
 
   const title = useMemo(() => {
@@ -88,6 +90,8 @@ export function AdminRecordsScreen({ view }: AdminRecordsScreenProps) {
   }, [debouncedSearch, insuranceType, limit, page, refreshKey, statusValue, view]);
 
   const handleRowClick = async (reference: string) => {
+    setDrawerLoading(true);
+    setSelectedRecord({});
     setDetailError("");
     try {
       const detail =
@@ -97,7 +101,92 @@ export function AdminRecordsScreen({ view }: AdminRecordsScreenProps) {
       setSelectedRecord(detail);
     } catch (requestError) {
       setDetailError(normalizeApiError(requestError).message);
+      setSelectedRecord(null);
+    } finally {
+      setDrawerLoading(false);
     }
+  };
+
+  const headers = useMemo(() => {
+    if (view === "transactions") {
+      return ["Ref No.", "Customer", "Type", "Amount", "Status", "Date", "View"];
+    }
+    if (view === "policies") {
+      return ["Policy No.", "Customer", "Type", "Coverage", "Provider", "Issued", "View"];
+    }
+    return ["Payment Ref", "Transaction Ref", "Gateway", "Amount", "Status", "Date", "View"];
+  }, [view]);
+
+  const renderRowCells = (record: Record<string, string | number>, index: number) => {
+    const formatStatus = (status: string) => {
+      const s = status.toUpperCase();
+      if (s === "SUCCESS" || s === "ISSUED" || s === "PAID" || s === "ACTIVE") {
+        return <StatusBadge status="issued">{status}</StatusBadge>;
+      }
+      if (s === "PENDING" || s === "PROCESSING") {
+        return <StatusBadge status="pending">{status}</StatusBadge>;
+      }
+      return <StatusBadge status="failed">{status}</StatusBadge>;
+    };
+
+    if (view === "transactions") {
+      const ref = String(record.transaction_reference ?? record.reference ?? "N/A");
+      const customer = String(record.customer_name ?? record.user_id ?? "N/A");
+      const type = String(record.insurance_type ?? record.type ?? "N/A");
+      const amount = formatCurrencyINR(Number(record.amount ?? record.premium_amount ?? 0));
+      const status = formatStatus(String(record.status ?? "PENDING"));
+      const date = String(record.date ?? (record.created_at ? new Date(record.created_at).toLocaleDateString("en-IN") : "N/A"));
+
+      return (
+        <>
+          <td className="if-mono">{ref}</td>
+          <td>{customer}</td>
+          <td>{type}</td>
+          <td>{amount}</td>
+          <td>{status}</td>
+          <td>{date}</td>
+        </>
+      );
+    }
+
+    if (view === "policies") {
+      const policyNo = String(record.policy_number ?? "N/A");
+      const customer = String(record.customer_name ?? record.user_id ?? "N/A");
+      const type = String(record.insurance_type ?? record.type ?? "N/A");
+      const coverage = formatCurrencyINR(Number(record.coverage_amount ?? 0));
+      const provider = String(record.provider_name ?? record.provider ?? "N/A");
+      const issued = String(record.issue_date ? new Date(record.issue_date).toLocaleDateString("en-IN") : "N/A");
+
+      return (
+        <>
+          <td className="if-mono">{policyNo}</td>
+          <td>{customer}</td>
+          <td>{type}</td>
+          <td>{coverage}</td>
+          <td>{provider}</td>
+          <td>{issued}</td>
+        </>
+      );
+    }
+
+    // Payments
+    const payRef = String(record.payment_reference ?? "N/A");
+    const txRef = String(record.transaction_reference ?? "N/A");
+    const gateway = String(record.gateway ?? "N/A");
+    const amount = formatCurrencyINR(Number(record.amount ?? 0));
+    const status = formatStatus(String(record.status ?? "PENDING"));
+    const date = String(record.date ?? (record.created_at ? new Date(record.created_at).toLocaleDateString("en-IN") : "N/A"));
+
+    return (
+      <>
+        <td className="if-mono">{payRef}</td>
+        <td className="if-mono">{txRef}</td>
+        <td>{gateway}</td>
+        <td>{amount}</td>
+        <td>{status}</td>
+        <td>{date}</td>
+      </>
+    );
   };
 
   return (
@@ -109,7 +198,7 @@ export function AdminRecordsScreen({ view }: AdminRecordsScreenProps) {
         </div>
         <Button variant="ghost">
           <Download size={16} />
-          Export
+          Export CSV
         </Button>
       </section>
 
@@ -118,13 +207,19 @@ export function AdminRecordsScreen({ view }: AdminRecordsScreenProps) {
           <TextInput
             className="if-toolbar-search"
             label="Search"
-            onChange={(event) => setSearchValue(event.target.value)}
+            onChange={(event) => {
+              setSearchValue(event.target.value);
+              setPage(1);
+            }}
             placeholder="Search by reference"
             value={searchValue}
           />
           <SelectField
             label="Status"
-            onChange={(event) => setStatusValue(event.target.value)}
+            onChange={(event) => {
+              setStatusValue(event.target.value);
+              setPage(1);
+            }}
             options={[
               { label: "All statuses", value: "ALL" },
               { label: "Pending", value: "PENDING" },
@@ -140,7 +235,10 @@ export function AdminRecordsScreen({ view }: AdminRecordsScreenProps) {
           {view === "policies" ? (
             <SelectField
               label="Insurance Type"
-              onChange={(event) => setInsuranceType(event.target.value)}
+              onChange={(event) => {
+                setInsuranceType(event.target.value);
+                setPage(1);
+              }}
               options={[
                 { label: "All types", value: "ALL" },
                 { label: "Health", value: "HEALTH" },
@@ -166,10 +264,9 @@ export function AdminRecordsScreen({ view }: AdminRecordsScreenProps) {
               <table className="if-data-table">
                 <thead>
                   <tr>
-                    {Object.keys(records[0] ?? { reference: "Reference", status: "Status" }).map((header) => (
+                    {headers.map((header) => (
                       <th key={header}>{header}</th>
                     ))}
-                    <th>View</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -182,19 +279,7 @@ export function AdminRecordsScreen({ view }: AdminRecordsScreenProps) {
                     );
                     return (
                       <tr key={recordReference} onClick={() => void handleRowClick(recordReference)}>
-                        {Object.entries(record).map(([key, value]) => (
-                          <td className={key.includes("reference") || key.includes("number") ? "if-mono" : ""} key={key}>
-                            {typeof value === "string" && value.toLowerCase() === "success" ? (
-                              <StatusBadge status="issued">Success</StatusBadge>
-                            ) : typeof value === "string" && value.toLowerCase() === "pending" ? (
-                              <StatusBadge status="pending">Pending</StatusBadge>
-                            ) : typeof value === "string" && value.toLowerCase() === "failed" ? (
-                              <StatusBadge status="failed">Failed</StatusBadge>
-                            ) : (
-                              String(value)
-                            )}
-                          </td>
-                        ))}
+                        {renderRowCells(record, index)}
                         <td>
                           <button className="if-link-button" type="button">
                             View
@@ -229,15 +314,22 @@ export function AdminRecordsScreen({ view }: AdminRecordsScreenProps) {
       </section>
 
       {selectedRecord ? (
-        <Drawer title={`${title.slice(0, -1)} detail`}>
-          {detailError ? (
+        <Drawer title={`${title.slice(0, -1)} detail`} onClose={() => setSelectedRecord(null)}>
+          {drawerLoading ? (
+            <div className="if-skeleton-stack" style={{ padding: "24px" }}>
+              <Skeleton height={24} />
+              <Skeleton height={24} />
+              <Skeleton height={24} />
+              <Skeleton height={24} />
+            </div>
+          ) : detailError ? (
             <ErrorCard message={detailError} />
           ) : (
             <div className="if-detail-stack">
               {Object.entries(selectedRecord).map(([key, value]) => (
                 <div className="if-detail-row" key={key}>
                   <span>{key}</span>
-                  <strong className={key.includes("reference") || key.includes("number") ? "if-mono" : ""}>
+                  <strong className={key.toLowerCase().includes("ref") || key.toLowerCase().includes("num") || key.toLowerCase().includes("id") ? "if-mono" : ""}>
                     {String(value)}
                   </strong>
                 </div>

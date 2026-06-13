@@ -10,6 +10,33 @@ import { TextInput } from "../../components/ui/TextInput";
 import { TextareaField } from "../../components/ui/TextareaField";
 import type { TicketSummary } from "../../services/api/customer";
 
+const getDaysElapsed = (updatedAtStr: string) => {
+  const updatedAt = new Date(updatedAtStr);
+  const now = new Date();
+  const oneDay = 24 * 60 * 60 * 1000;
+  const diffTime = Math.abs(now.getTime() - updatedAt.getTime());
+  const diffDays = Math.floor(diffTime / oneDay);
+  if (diffDays === 0) {
+    return "today";
+  } else if (diffDays === 1) {
+    return "1 day ago";
+  } else {
+    return `${diffDays} days ago`;
+  }
+};
+
+const getPriorityClass = (priority: string) => {
+  switch (priority.toUpperCase()) {
+    case "HIGH":
+      return "is-high";
+    case "MEDIUM":
+      return "is-medium";
+    case "LOW":
+    default:
+      return "is-low";
+  }
+};
+
 interface SupportTicketScreenProps {
   loading: boolean;
   error?: string;
@@ -124,14 +151,14 @@ export function SupportTicketScreen({
         ) : tickets.length > 0 ? (
           <div className="if-ticket-stack">
             {tickets.map((ticket) => (
-              <div className="if-ticket-row" key={ticket.ticket_reference}>
+              <div className={`if-ticket-row ${getPriorityClass(ticket.priority)}`} key={ticket.ticket_reference}>
                 <div>
                   <p className="if-mono">{ticket.ticket_reference}</p>
                   <h3>{ticket.subject}</h3>
                 </div>
                 <div className="if-ticket-meta">
                   <StatusBadge status="processing">{ticket.status}</StatusBadge>
-                  <span>Last updated {new Date(ticket.updated_at).toLocaleDateString("en-IN")}</span>
+                  <span>Updated {getDaysElapsed(ticket.updated_at)}</span>
                 </div>
               </div>
             ))}
