@@ -1,0 +1,186 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.1), transparent 28%),
+    linear-gradient(180deg, #f8fbff 0%, var(--if-page-bg) 30%, #e9eff8 100%);
+  color: var(--if-text-1);
+  font: var(--fs-body);
+  min-width: 320px;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.if-page-shell {
+  min-height: 100vh;
+}
+
+.if-content-shell {
+  width: min(calc(100% - 40px), var(--if-max-content-width));
+  margin: 0 auto;
+}
+
+.if-eyebrow {
+  margin: 0 0 var(--space-2);
+  color: var(--if-sky);
+  font: var(--fs-label);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.if-hero-title {
+  margin: 0;
+  font: var(--fs-hero);
+}
+
+.if-hero-copy {
+  margin: var(--space-4) 0 0;
+  max-width: 62ch;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.if-surface-card {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--if-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(10px);
+  padding: 28px;
+}
+
+.if-grid {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.if-grid-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.if-grid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.if-section-heading {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.if-section-heading h2 {
+  margin: 0;
+  font: var(--fs-h2);
+}
+
+.if-form-stack,
+.if-skeleton-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.if-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.if-mono {
+  font: var(--fs-mono);
+}
+
+.if-hero-card {
+  align-items: end;
+  background: var(--if-grad-hero);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  color: #ffffff;
+  display: grid;
+  gap: var(--space-8);
+  grid-template-columns: minmax(0, 1fr) auto;
+  overflow: hidden;
+  padding: 36px;
+  position: relative;
+}
+
+.if-hero-card::after {
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.18), transparent 42%);
+  content: "";
+  inset: -20% -10% auto auto;
+  position: absolute;
+  width: 280px;
+  height: 280px;
+}
+
+.if-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 1024px) {
+  .if-grid-stats,
+  .if-grid-two,
+  .if-hero-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .if-content-shell {
+    width: min(calc(100% - 64px), var(--if-max-content-width));
+  }
+
+  .if-surface-card,
+  .if-hero-card {
+    padding: 24px;
+  }
+
+  .if-hero-title {
+    font-size: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .if-content-shell {
+    width: min(calc(100% - 40px), var(--if-max-content-width));
+  }
+
+  .if-hero-title {
+    font-size: 28px;
+  }
+}
