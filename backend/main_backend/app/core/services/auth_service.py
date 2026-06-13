@@ -75,6 +75,15 @@ class AuthService:
         )
         await engine.save(token)
 
+        if settings.debug:
+            print(
+                "[DEV OTP] "
+                f"mobile_number={normalized_mobile} "
+                f"purpose={purpose.value} "
+                f"otp_code={otp_code} "
+                f"expires_at={expires_at.isoformat()}"
+            )
+
         return OTPDispatchResult(
             mobile_number=normalized_mobile,
             otp_code=otp_code,
@@ -99,12 +108,13 @@ class AuthService:
         if not tokens:
             raise NotFoundServiceError("No OTP session exists for the provided mobile number.")
 
-        latest_token = max(tokens, key=lambda token: token.created_at)
-        now = datetime.now(timezone.utc)
+        latest_token = max(tokens, key=lambda token: self._ensure_utc(token.created_at))
+        now = self._ensure_utc(datetime.now(timezone.utc))
+        expires_at = self._ensure_utc(latest_token.expires_at)
 
         if latest_token.is_used:
             raise AuthenticationServiceError("The OTP has already been used.")
-        if latest_token.expires_at < now:
+        if expires_at < now:
             raise AuthenticationServiceError("The OTP has expired. Request a new one.")
         if latest_token.otp_code_hash != self._hash_otp(otp_code):
             raise AuthenticationServiceError("The OTP provided is invalid.")
@@ -125,6 +135,13 @@ class AuthService:
     def _hash_otp(otp_code: str) -> str:
         """Hash an OTP value prior to persistence."""
         return hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _ensure_utc(value: datetime) -> datetime:
+        """Normalize datetime values so naive database timestamps are treated as UTC."""
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
 
 auth_service = AuthService()
