@@ -47,3 +47,14 @@ Thumbs.db
 *.db
 tmp/
 temp/
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Backend
+venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
