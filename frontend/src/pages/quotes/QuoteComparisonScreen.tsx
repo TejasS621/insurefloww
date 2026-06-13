@@ -1,103 +1,71 @@
 import { CheckCircle2, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "../../components/ui/Button";
+import { ErrorCard } from "../../components/ui/ErrorCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { ToggleSwitch } from "../../components/ui/ToggleSwitch";
+import type { ApplicationQuote } from "../../services/api/customer";
 import { formatCurrencyINR } from "../../utils/formatters";
 
 interface QuoteComparisonScreenProps {
+  quotes: ApplicationQuote[];
+  transactionReference: string | null;
+  loading: boolean;
+  error?: string;
   onBack: () => void;
-  onProceed: () => void;
+  onRetry?: () => void;
+  onProceed: (quoteId: string, selectedAddons: string[]) => Promise<void>;
+  isProceeding: boolean;
 }
 
-const quoteCards = [
-  {
-    id: "care-plus",
-    provider: "Care Secure",
-    initials: "CS",
-    planName: "Care Plus Shield",
-    coverageAmount: 1000000,
-    monthlyPremium: 1890,
-    annualPremium: 22680,
-    benefits: [
-      "Cashless network hospitals",
-      "Day-care treatment cover",
-      "No-claim bonus booster",
-      "Free annual health check",
-    ],
-  },
-  {
-    id: "nova-prime",
-    provider: "Nova Life",
-    initials: "NL",
-    planName: "Nova Prime Protect",
-    coverageAmount: 1000000,
-    monthlyPremium: 1725,
-    annualPremium: 20700,
-    benefits: [
-      "OPD consultation add-on ready",
-      "Room rent flexibility",
-      "Fast digital claim support",
-      "Wellness rewards tracking",
-    ],
-    recommended: true,
-  },
-  {
-    id: "aegis-elite",
-    provider: "Aegis Health",
-    initials: "AH",
-    planName: "Aegis Elite Cover",
-    coverageAmount: 1000000,
-    monthlyPremium: 2140,
-    annualPremium: 25680,
-    benefits: [
-      "Maternity waiting reduction",
-      "Global second opinion access",
-      "Restoration of sum insured",
-      "Preventive health package",
-    ],
-  },
-];
-
-const addonCatalog = [
-  {
-    id: "wellness",
-    name: "Wellness Booster",
-    description: "Extra preventive checkups and nutrition consultations.",
-    amount: 2400,
-  },
-  {
-    id: "maternity",
-    name: "Maternity Support",
-    description: "Expanded maternity and newborn benefit support.",
-    amount: 5200,
-  },
-  {
-    id: "global",
-    name: "Global Emergency Rider",
-    description: "Emergency stabilization support while travelling abroad.",
-    amount: 3600,
-  },
-];
-
 /**
- * QuoteComparisonScreen presents plan cards, add-ons, and the running premium total.
- * It gives customers a focused compare and proceed step before payment initiation.
+ * QuoteComparisonScreen renders API-backed quote selection with optimistic selection state.
+ * Add-on choices are included when the customer confirms the selected plan.
  */
-export function QuoteComparisonScreen({ onBack, onProceed }: QuoteComparisonScreenProps) {
-  const [selectedQuoteId, setSelectedQuoteId] = useState("nova-prime");
-  const [enabledAddons, setEnabledAddons] = useState<string[]>(["wellness"]);
+export function QuoteComparisonScreen({
+  quotes,
+  transactionReference,
+  loading,
+  error,
+  onBack,
+  onRetry,
+  onProceed,
+  isProceeding,
+}: QuoteComparisonScreenProps) {
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string>("");
+  const [enabledAddons, setEnabledAddons] = useState<string[]>([]);
 
-  const selectedQuote = quoteCards.find((quote) => quote.id === selectedQuoteId) ?? quoteCards[1];
-  const addonTotal = enabledAddons.reduce((total, addonId) => {
-    const addon = addonCatalog.find((item) => item.id === addonId);
-    return total + (addon?.amount ?? 0);
-  }, 0);
+  useEffect(() => {
+    if (!selectedQuoteId && quotes.length > 0) {
+      setSelectedQuoteId(quotes[0].quote_id);
+    }
+  }, [quotes, selectedQuoteId]);
+
+  const selectedQuote = quotes.find((quote) => quote.quote_id === selectedQuoteId) ?? quotes[0];
+  const selectedAddonObjects =
+    selectedQuote?.available_addons.filter((addon) => enabledAddons.includes(addon.addon_code)) ?? [];
+  const addonTotal = selectedAddonObjects.reduce((total, addon) => total + addon.addon_price, 0);
   const grandTotal = useMemo(
-    () => selectedQuote.annualPremium + addonTotal,
-    [addonTotal, selectedQuote.annualPremium],
+    () => (selectedQuote?.total_premium ?? 0) + addonTotal,
+    [addonTotal, selectedQuote?.total_premium],
   );
+
+  if (loading) {
+    return (
+      <div className="if-screen-stack">
+        <div className="if-grid if-grid-stats">
+          <div className="if-skeleton" style={{ height: 320 }} />
+          <div className="if-skeleton" style={{ height: 320 }} />
+          <div className="if-skeleton" style={{ height: 320 }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <ErrorCard message={error} onRetry={onRetry} />;
+  }
 
   return (
     <div className="if-screen-stack">
@@ -108,89 +76,102 @@ export function QuoteComparisonScreen({ onBack, onProceed }: QuoteComparisonScre
             Compare the strongest matches for your application before choosing one.
           </p>
         </div>
-        <span className="if-summary-pill">Health | ₹10L Coverage</span>
+        <span className="if-summary-pill">Transaction | {transactionReference ?? "Pending ref"}</span>
       </section>
 
       <section className="if-quote-grid">
-        {quoteCards.map((quote) => (
+        {quotes.map((quote, index) => (
           <article
-            className={`if-quote-card ${quote.recommended ? "is-recommended" : ""} ${
-              selectedQuoteId === quote.id ? "is-selected" : ""
+            className={`if-quote-card ${index === 0 ? "is-recommended" : ""} ${
+              selectedQuoteId === quote.quote_id ? "is-selected" : ""
             }`}
-            key={quote.id}
+            key={quote.quote_id}
           >
-            {quote.recommended ? (
+            {index === 0 ? (
               <div className="if-recommended-badge">
                 <Sparkles size={14} />
                 Best Value
               </div>
             ) : null}
             <div className="if-quote-provider">
-              <div className="if-provider-avatar">{quote.initials}</div>
+              <div className="if-provider-avatar">
+                {quote.provider_name
+                  .split(" ")
+                  .map((chunk) => chunk[0])
+                  .join("")
+                  .slice(0, 2)}
+              </div>
               <div>
-                <p className="if-quote-provider-name">{quote.provider}</p>
-                <h3>{quote.planName}</h3>
+                <p className="if-quote-provider-name">{quote.provider_name}</p>
+                <h3>{quote.plan_name}</h3>
               </div>
             </div>
-            <p className="if-quote-coverage">{formatCurrencyINR(quote.coverageAmount)}</p>
-            <p className="if-quote-monthly">{formatCurrencyINR(quote.monthlyPremium)} / month</p>
-            <p className="if-quote-annual">{formatCurrencyINR(quote.annualPremium)} billed annually</p>
+            <p className="if-quote-coverage">{formatCurrencyINR(quote.coverage_amount)}</p>
+            <p className="if-quote-monthly">{formatCurrencyINR(quote.total_premium / 12)} / month</p>
+            <p className="if-quote-annual">{formatCurrencyINR(quote.total_premium)} billed annually</p>
             <ul className="if-benefit-list">
-              {quote.benefits.map((benefit) => (
+              {[
+                `${quote.provider_name} managed servicing`,
+                `Plan code ${quote.plan_code}`,
+                "Digital policy issuance",
+                "Add-on customisation support",
+              ].map((benefit) => (
                 <li key={benefit}>
                   <CheckCircle2 size={16} />
                   <span>{benefit}</span>
                 </li>
               ))}
             </ul>
-            <Button className="if-button-full" onClick={() => setSelectedQuoteId(quote.id)}>
+            <Button className="if-button-full" onClick={() => setSelectedQuoteId(quote.quote_id)}>
               Select Plan
             </Button>
           </article>
         ))}
       </section>
 
-      <section className="if-surface-card">
-        <div className="if-section-heading">
-          <div>
-            <p className="if-eyebrow">Add-ons</p>
-            <h2>Enhance your plan</h2>
+      {selectedQuote ? (
+        <section className="if-surface-card">
+          <div className="if-section-heading">
+            <div>
+              <p className="if-eyebrow">Add-ons</p>
+              <h2>Enhance your plan</h2>
+            </div>
+            <StatusBadge status="processing">Customisable</StatusBadge>
           </div>
-          <StatusBadge status="processing">Customisable</StatusBadge>
-        </div>
-        <div className="if-addon-stack">
-          {addonCatalog.map((addon) => {
-            const checked = enabledAddons.includes(addon.id);
-            return (
-              <div className="if-addon-row" key={addon.id}>
-                <div>
-                  <h3>{addon.name}</h3>
-                  <p>{addon.description}</p>
+          <div className="if-addon-stack">
+            {selectedQuote.available_addons.map((addon) => {
+              const checked = enabledAddons.includes(addon.addon_code);
+              return (
+                <div className="if-addon-row" key={addon.addon_code}>
+                  <div>
+                    <h3>{addon.addon_name}</h3>
+                    <p>{addon.addon_code}</p>
+                  </div>
+                  <div className="if-addon-action">
+                    <span className="if-addon-price">+{formatCurrencyINR(addon.addon_price)} / year</span>
+                    <ToggleSwitch
+                      ariaLabel={`Toggle ${addon.addon_name}`}
+                      checked={checked}
+                      onChange={(nextChecked) =>
+                        setEnabledAddons((current) =>
+                          nextChecked
+                            ? [...current, addon.addon_code]
+                            : current.filter((item) => item !== addon.addon_code),
+                        )
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="if-addon-action">
-                  <span className="if-addon-price">+{formatCurrencyINR(addon.amount)} / year</span>
-                  <ToggleSwitch
-                    ariaLabel={`Toggle ${addon.name}`}
-                    checked={checked}
-                    onChange={(nextChecked) =>
-                      setEnabledAddons((current) =>
-                        nextChecked
-                          ? [...current, addon.id]
-                          : current.filter((item) => item !== addon.id),
-                      )
-                    }
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <div className="if-sticky-total-bar">
         <div>
           <p className="if-total-label">
-            Base premium {formatCurrencyINR(selectedQuote.annualPremium)} + Add-ons {formatCurrencyINR(addonTotal)} =
+            Base premium {formatCurrencyINR(selectedQuote?.total_premium ?? 0)} + Add-ons {formatCurrencyINR(addonTotal)} =
           </p>
           <p className="if-total-value">Total {formatCurrencyINR(grandTotal)}</p>
         </div>
@@ -198,7 +179,17 @@ export function QuoteComparisonScreen({ onBack, onProceed }: QuoteComparisonScre
           <Button onClick={onBack} variant="ghost">
             Back
           </Button>
-          <Button onClick={onProceed}>Proceed</Button>
+          <Button
+            loading={isProceeding}
+            onClick={() => {
+              if (!selectedQuoteId) {
+                return;
+              }
+              void onProceed(selectedQuoteId, enabledAddons);
+            }}
+          >
+            Proceed
+          </Button>
         </div>
       </div>
     </div>

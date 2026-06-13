@@ -1,53 +1,79 @@
 import { Building2, Headset, Shield } from "lucide-react";
 
 import { Button } from "../../components/ui/Button";
+import { ErrorCard } from "../../components/ui/ErrorCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import type { PaymentSession } from "../../services/api/customer";
 import { formatCurrencyINR } from "../../utils/formatters";
 
 interface PaymentInitiationScreenProps {
-  onProceed: () => void;
+  paymentSession: PaymentSession | null;
+  paymentStatus: "idle" | "initiating" | "verifying" | "failed" | "success";
+  error?: string;
+  onProceed: () => Promise<void>;
+  onRetry: () => Promise<void>;
 }
 
 /**
- * PaymentInitiationScreen summarizes the selected plan before checkout redirect.
- * It pairs a payment summary with trust markers and payment-method reassurance.
+ * PaymentInitiationScreen starts hosted checkout and reflects verification polling state.
+ * It uses the API payment session response instead of directly contacting the provider.
  */
-export function PaymentInitiationScreen({ onProceed }: PaymentInitiationScreenProps) {
+export function PaymentInitiationScreen({
+  paymentSession,
+  paymentStatus,
+  error,
+  onProceed,
+  onRetry,
+}: PaymentInitiationScreenProps) {
   return (
     <div className="if-screen-stack">
+      {error ? <ErrorCard message={error} onRetry={() => void onRetry()} /> : null}
+
       <section className="if-payment-grid">
         <article className="if-surface-card">
           <div className="if-section-heading">
             <div>
-              <StatusBadge status="processing">Health Insurance</StatusBadge>
-              <h2>Nova Prime Protect</h2>
-              <p className="if-inline-subtitle">Provider: Nova Life</p>
+              <StatusBadge status="processing">Hosted Checkout</StatusBadge>
+              <h2>Proceed with secure payment</h2>
+              <p className="if-inline-subtitle">
+                {paymentSession?.payment_reference ?? "Payment session will appear after initiation."}
+              </p>
             </div>
           </div>
           <div className="if-payment-lines">
             <div className="if-payment-line">
               <span>Base Premium</span>
-              <strong>{formatCurrencyINR(20700)}</strong>
+              <strong>{formatCurrencyINR(paymentSession?.amount ?? 0)}</strong>
             </div>
             <div className="if-payment-line">
-              <span>Add-ons</span>
-              <strong>{formatCurrencyINR(2400)}</strong>
+              <span>Gateway</span>
+              <strong>{paymentSession?.gateway ?? "Provider Hosted Checkout"}</strong>
             </div>
             <div className="if-payment-line">
-              <span>Taxes</span>
-              <strong>{formatCurrencyINR(4158)}</strong>
+              <span>Methods</span>
+              <strong>{paymentSession?.available_payment_methods.join(", ") || "UPI, CARD, NETBANKING"}</strong>
             </div>
           </div>
           <div className="if-payment-total">
             <span>Total payable</span>
-            <strong>{formatCurrencyINR(27258)}</strong>
+            <strong>{formatCurrencyINR(paymentSession?.amount ?? 0)}</strong>
           </div>
-          <Button className="if-button-full" onClick={onProceed}>
-            Proceed to Pay
+          <Button
+            className="if-button-full"
+            loading={paymentStatus === "initiating" || paymentStatus === "verifying"}
+            onClick={() => void onProceed()}
+          >
+            {paymentStatus === "verifying" ? "Verifying payment..." : "Proceed to Pay"}
           </Button>
           <p className="if-payment-note">
-            You will be redirected to the secure Razorpay checkout.
+            You will be redirected to the secure checkout experience. Payment status is verified with
+            polling after initiation.
           </p>
+          {paymentStatus === "failed" ? (
+            <div className="if-inline-note">
+              Payment failed. You can retry the initiation flow from this screen.
+            </div>
+          ) : null}
         </article>
 
         <aside className="if-surface-card">
@@ -72,10 +98,11 @@ export function PaymentInitiationScreen({ onProceed }: PaymentInitiationScreenPr
             </div>
           </div>
           <div className="if-logo-block">
-            <span className="if-logo-pill">Razorpay</span>
-            <span className="if-logo-pill">UPI</span>
-            <span className="if-logo-pill">Cards</span>
-            <span className="if-logo-pill">Netbanking</span>
+            {(paymentSession?.available_payment_methods ?? ["UPI", "CARD", "NETBANKING"]).map((method) => (
+              <span className="if-logo-pill" key={method}>
+                {method}
+              </span>
+            ))}
           </div>
         </aside>
       </section>

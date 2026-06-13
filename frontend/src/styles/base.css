@@ -704,6 +704,28 @@ a {
   width: 100%;
 }
 
+.if-error-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+}
+
+.if-error-card h3 {
+  font: var(--fs-h3);
+  margin: 0;
+}
+
+.if-error-card p {
+  color: var(--if-text-2);
+  margin: 10px 0 0;
+}
+
+.if-error-card-action {
+  margin-top: 16px;
+}
+
 .if-admin-auth-shell {
   align-items: center;
   background: var(--if-page-bg);
@@ -843,6 +865,13 @@ a {
   display: inline-flex;
   gap: 8px;
   margin-top: 12px;
+}
+
+.if-portal-switch {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 24px 24px 0;
 }
 
 .if-admin-toolbar {
