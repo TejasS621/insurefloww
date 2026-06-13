@@ -1,0 +1,296 @@
+.if-button {
+  align-items: center;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid transparent;
+  display: inline-flex;
+  gap: 10px;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 24px;
+  transition:
+    transform 160ms ease,
+    filter 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.if-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.if-button:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.if-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.if-button-primary {
+  background: var(--if-grad-primary);
+  color: #fff;
+}
+
+.if-button-ghost {
+  background: transparent;
+  border-color: var(--if-indigo);
+  color: var(--if-indigo);
+}
+
+.if-button-icon-only {
+  padding: 10px;
+  width: 44px;
+}
+
+.if-field {
+  display: grid;
+  gap: 8px;
+}
+
+.if-field-control {
+  position: relative;
+}
+
+.if-input {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1.5px solid var(--if-border);
+  border-radius: var(--radius-sm);
+  color: var(--if-text-1);
+  height: 44px;
+  outline: none;
+  padding: 18px 14px 8px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+  width: 100%;
+}
+
+.if-input:focus {
+  border-color: var(--if-indigo);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.if-input-mono {
+  font: var(--fs-mono);
+}
+
+.if-input-error {
+  border-color: var(--if-danger);
+}
+
+.if-input-error:focus {
+  border-color: var(--if-danger);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.if-floating-label {
+  color: var(--if-text-2);
+  left: 14px;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  transition:
+    top 160ms ease,
+    transform 160ms ease,
+    font-size 160ms ease,
+    color 160ms ease;
+}
+
+.if-field-control:focus-within .if-floating-label,
+.if-input:not(:placeholder-shown) + .if-floating-label {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.96));
+  color: var(--if-indigo);
+  font-size: 11px;
+  padding: 0 4px;
+  top: 0;
+  transform: translateY(-50%);
+}
+
+.if-helper-text {
+  color: var(--if-text-2);
+  font-size: 13px;
+}
+
+.if-error-text {
+  color: var(--if-danger);
+  font-size: 13px;
+}
+
+.if-otp-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.if-otp-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.if-otp-input {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1.5px solid var(--if-border);
+  border-radius: var(--radius-sm);
+  font: 600 24px/1 "Inter", sans-serif;
+  height: 56px;
+  outline: none;
+  text-align: center;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  width: 48px;
+}
+
+.if-otp-input:focus {
+  border-color: var(--if-indigo);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  transform: translateY(-1px);
+}
+
+.if-badge {
+  align-items: center;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 6px;
+  padding: 3px 10px;
+}
+
+.if-badge-issued {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.if-badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.if-badge-failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.if-badge-processing {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.if-badge-cancelled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.if-badge-admin {
+  background: rgba(79, 70, 229, 0.14);
+  color: #4338ca;
+}
+
+.if-stat-card {
+  background: var(--if-grad-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  color: #fff;
+  overflow: hidden;
+  padding: 20px 24px;
+  position: relative;
+}
+
+.if-stat-card::after {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.14), transparent 58%);
+  content: "";
+  height: 140px;
+  position: absolute;
+  right: -30px;
+  top: -32px;
+  width: 140px;
+}
+
+.if-stat-card-alt {
+  background: linear-gradient(135deg, #0a1628 0%, #14294d 55%, #1b3f8b 100%);
+}
+
+.if-stat-label {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  margin: 0;
+}
+
+.if-stat-value {
+  font: 700 28px/1.2 "Inter", sans-serif;
+  margin: 8px 0 0;
+  position: relative;
+  z-index: 1;
+}
+
+.if-empty-state {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px 8px 4px;
+  text-align: center;
+}
+
+.if-empty-state svg {
+  height: auto;
+  margin-bottom: var(--space-6);
+  max-width: 220px;
+}
+
+.if-empty-state h3 {
+  font: var(--fs-h3);
+  margin: 0;
+}
+
+.if-empty-state p {
+  color: var(--if-text-2);
+  font-size: 14px;
+  margin: 10px 0 0;
+  max-width: 52ch;
+}
+
+.if-empty-state-action {
+  margin-top: var(--space-6);
+}
+
+.if-skeleton {
+  background:
+    linear-gradient(
+      90deg,
+      #e2e8f0 0%,
+      #f8fafc 20%,
+      #e2e8f0 40%
+    );
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  animation: if-shimmer 1.4s linear infinite;
+}
+
+@keyframes if-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .if-otp-row {
+    gap: 8px;
+  }
+
+  .if-otp-input {
+    flex: 1 1 0;
+    width: auto;
+  }
+}
