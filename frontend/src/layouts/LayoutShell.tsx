@@ -7,6 +7,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   active?: boolean;
+  onClick?: () => void;
 }
 
 interface LayoutShellProps {
@@ -83,12 +84,15 @@ export function LayoutShell({
             {mobileItems.map((item) => {
               const Icon = item.icon;
               return (
-                <button
-                  key={item.label}
-                  className={`if-mobile-drawer-item ${item.active ? "is-active" : ""}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  type="button"
-                >
+                  <button
+                    key={item.label}
+                    className={`if-mobile-drawer-item ${item.active ? "is-active" : ""}`}
+                    onClick={() => {
+                      item.onClick?.();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    type="button"
+                  >
                   <Icon size={20} />
                   <span>{item.label}</span>
                 </button>
@@ -109,6 +113,7 @@ export function LayoutShell({
                   <button
                     key={item.label}
                     className={`if-sidebar-item ${item.active ? "is-active" : ""}`}
+                    onClick={item.onClick}
                     type="button"
                   >
                     <Icon size={20} />
@@ -134,6 +139,7 @@ export function LayoutShell({
                 <button
                   key={item.label}
                   className={`if-bottom-nav-item ${item.active ? "is-active" : ""}`}
+                  onClick={item.onClick}
                   type="button"
                 >
                   <Icon size={24} />
