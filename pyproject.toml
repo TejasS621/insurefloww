@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "insureflow-cli"
+version = "0.1.0"
+description = "Typer-based CLI for InsureFlow customer and admin workflows."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "email-validator==2.3.0",
+  "httpx==0.28.1",
+  "pydantic==2.13.4",
+  "pydantic-settings==2.2.1",
+  "python-dotenv==1.2.2",
+  "rich==14.1.0",
+  "typer==0.20.0",
+]
+
+[project.scripts]
+insureflow = "insureflow_cli.app:app"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["insureflow_cli*", "insureflow_mcp*", "voice_bot*"]
