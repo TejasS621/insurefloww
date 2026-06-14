@@ -25,4 +25,4 @@ insureflow = "insureflow_cli.app:app"
 include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ["insureflow_cli*", "insureflow_mcp*"]
+include = ["insureflow_cli*", "insureflow_mcp*", "voice_bot*"]
