@@ -29,6 +29,7 @@ class MCPSettings(BaseSettings):
     streamable_http_path: str = Field(default="/mcp", alias="MCP_HTTP_PATH")
     health_path: str = Field(default="/health", alias="MCP_HEALTH_PATH")
     cors_allow_origins: list[str] = Field(default_factory=lambda: ["*"], alias="MCP_CORS_ALLOW_ORIGINS")
+    api_key: str | None = Field(default=None, alias="MCP_API_KEY")
 
     main_backend_url: str = Field(
         default="http://localhost:8000/api/v1",

@@ -38,19 +38,11 @@ mcp_server.py
   - `get_policy`
   - `download_policy`
   - `create_ticket`
-- `request_customer_otp`
-- `verify_customer_otp`
-- `admin_login`
-- `admin_verify`
-- `generate_quote`
-- `select_quote`
-- `initiate_payment`
-- `get_payment_status`
-- `get_policy`
-- `download_policy`
-- `create_ticket`
-- `list_brokers`
-- `register_broker`
+- Admin tools:
+  - `admin_login`
+  - `admin_verify`
+  - `list_brokers`
+  - `register_broker`
 
 ## Important Backend Alignment Notes
 
@@ -155,6 +147,16 @@ Environment variables:
 - `MCP_HTTP_PATH=/mcp`
 - `MCP_HEALTH_PATH=/health`
 - `MCP_CORS_ALLOW_ORIGINS=["*"]`
+- `MCP_API_KEY=`
+- `MAIN_BACKEND_URL=`
+- `MCP_REQUEST_TIMEOUT_SECONDS=15`
+- `MCP_MAX_RETRIES=2`
+- `MCP_RETRY_BACKOFF_SECONDS=0.5`
+- `MCP_DOWNLOAD_DIRECTORY=storage/mcp_downloads`
+- `LOG_LEVEL=INFO`
+
+Note:
+- `PROVIDER_BACKEND_URL` is intentionally not part of the MCP deployment config because the current MCP tool layer calls `MAIN_BACKEND_URL` only.
 
 Local remote run:
 
@@ -167,6 +169,12 @@ python mcp_remote_server.py
 
 The FastMCP server uses streamable HTTP for the remote endpoint path configured by `MCP_HTTP_PATH`.
 
+Public protection:
+- If `MCP_API_KEY` is empty, remote MCP runs without API-key protection for local/dev use.
+- If `MCP_API_KEY` is set, all remote MCP requests must include:
+  - `X-MCP-API-Key: <value>`
+- `/health` remains public even when `MCP_API_KEY` is enabled.
+
 ## Deployment Notes
 
 Railway:
@@ -174,6 +182,8 @@ Railway:
 - Set `MCP_TRANSPORT=http`
 - Set `MCP_HOST=0.0.0.0`
 - Set `MCP_PORT` to Railway's exposed port if required by your service config
+- Set `MAIN_BACKEND_URL` to your deployed main backend
+- Optionally set `MCP_API_KEY` for public access control
 
 Render:
 - Use a Web Service, not a Background Worker
@@ -181,18 +191,35 @@ Render:
 - Set `MCP_TRANSPORT=http`
 - Set `MCP_HOST=0.0.0.0`
 - Set `MCP_PORT=10000` or the port expected by your Render service settings
+- Set `MAIN_BACKEND_URL` to your deployed main backend
+- Set `MCP_API_KEY` if the deployment is public
 
 Horizon:
-- Use `python mcp_remote_server.py` as the runtime command
+- Use `python mcp_remote_server.py` as the runtime command, or deploy with the included `Dockerfile`
 - Set `MCP_TRANSPORT=http`
 - Set `MCP_HOST=0.0.0.0`
 - Set `MCP_PORT` to the port exposed by the Horizon deployment
+- Set `MAIN_BACKEND_URL` to your deployed main backend
+- Set `MCP_API_KEY` if the deployment is public
+- Health check path: `/health`
+- MCP endpoint path: `/mcp`
+- Horizon can use the included Dockerfile or run the Python entrypoint directly
+
+Suggested Horizon environment:
+- `MCP_TRANSPORT=http`
+- `MCP_HOST=0.0.0.0`
+- `MCP_PORT=8080`
+- `MCP_HTTP_PATH=/mcp`
+- `MCP_HEALTH_PATH=/health`
+- `MAIN_BACKEND_URL=https://your-main-backend.example.com/api/v1`
+- `MCP_API_KEY=your-shared-secret`
 
 Operational notes:
 - `mcp_server.py` keeps Claude Desktop stdio mode working
 - `mcp_remote_server.py` is the remote-friendly entrypoint
 - `/health` can be used by load balancers and deployment health probes
 - CORS is enabled for remote HTTP mode through `MCP_CORS_ALLOW_ORIGINS`
+- `X-MCP-API-Key` protects remote MCP access when `MCP_API_KEY` is configured
 - Auth session state remains process-local and in-memory, just like the local MCP server
 
 ## Production Deployment Notes
