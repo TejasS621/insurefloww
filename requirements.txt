@@ -44,3 +44,5 @@ reportlab==4.1.0
 # Utility
 annotated-doc==0.0.4
 colorama==0.4.6
+rich==14.1.0
+typer==0.20.0
