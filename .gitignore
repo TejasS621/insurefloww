@@ -1,7 +1,20 @@
 # Environment files
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!**/.env.example
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+**/venv/
+**/.venv/
+**/env/
+**/ENV/
 
 # Python
 __pycache__/
@@ -15,12 +28,6 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
-
-# Virtual environments
-venv/
-.venv/
-env/
-ENV/
 
 # Logs
 logs/
@@ -47,16 +54,9 @@ Thumbs.db
 *.db
 tmp/
 temp/
+storage/
+
 # Frontend
 frontend/node_modules/
 frontend/dist/
-
-# Backend
-venv/
-__pycache__/
-*.pyc
-
-# Environment
-.env
-storage/
 *.tsbuildinfo
