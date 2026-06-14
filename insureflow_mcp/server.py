@@ -6,6 +6,7 @@ from typing import Any
 
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -28,6 +29,45 @@ from insureflow_mcp.tools import (
     register_quote_tools,
     register_ticket_tools,
 )
+
+
+class MCPAPIKeyMiddleware(BaseHTTPMiddleware):
+    """Protect remote MCP endpoints with an optional shared API key."""
+
+    def __init__(self, app: Any, *, settings: MCPSettings) -> None:
+        super().__init__(app)
+        self.settings = settings
+
+    async def dispatch(self, request: Request, call_next: Any) -> Response:
+        """Require `X-MCP-API-Key` for non-health HTTP requests when configured."""
+
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        if request.url.path == self.settings.health_path:
+            return await call_next(request)
+
+        configured_key = self.settings.api_key
+        if not configured_key:
+            return await call_next(request)
+
+        provided_key = request.headers.get("X-MCP-API-Key")
+        if provided_key != configured_key:
+            return JSONResponse(
+                {
+                    "success": False,
+                    "message": "Missing or invalid MCP API key.",
+                    "error": {
+                        "code": "mcp_api_key_required",
+                        "detail": "Provide a valid X-MCP-API-Key header for remote MCP access.",
+                        "status_code": 401,
+                        "retryable": False,
+                    },
+                },
+                status_code=401,
+            )
+
+        return await call_next(request)
 
 
 def create_server(settings: MCPSettings | None = None) -> FastMCP:
@@ -75,6 +115,7 @@ def build_http_middleware(settings: MCPSettings) -> list[Middleware]:
     """Create HTTP middleware required by the remote MCP deployment."""
 
     return [
+        Middleware(MCPAPIKeyMiddleware, settings=settings),
         Middleware(
             CORSMiddleware,
             allow_origins=settings.cors_allow_origins or ["*"],
@@ -83,6 +124,16 @@ def build_http_middleware(settings: MCPSettings) -> list[Middleware]:
             allow_headers=["*"],
         )
     ]
+
+
+def build_http_app(*, server: FastMCP, settings: MCPSettings) -> Any:
+    """Build the Starlette HTTP app for remote MCP usage and tests."""
+
+    return server.http_app(
+        path=settings.streamable_http_path,
+        transport="http",
+        middleware=build_http_middleware(settings),
+    )
 
 
 def run_server(
