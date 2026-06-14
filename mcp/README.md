@@ -195,7 +195,7 @@ Render:
 - Set `MCP_API_KEY` if the deployment is public
 
 Horizon:
-- Use `python mcp_remote_server.py` as the runtime command, or deploy with the included `Dockerfile`
+- Use the dedicated Horizon entrypoint `horizon_server.py:server`
 - Set `MCP_TRANSPORT=http`
 - Set `MCP_HOST=0.0.0.0`
 - Set `MCP_PORT` to the port exposed by the Horizon deployment
@@ -203,7 +203,8 @@ Horizon:
 - Set `MCP_API_KEY` if the deployment is public
 - Health check path: `/health`
 - MCP endpoint path: `/mcp`
-- Horizon can use the included Dockerfile or run the Python entrypoint directly
+- Horizon should expose only the remote MCP server object from `horizon_server.py`
+- Do not deploy the frontend, customer/backend APIs, voice bot, or CLI as part of the Horizon service
 
 Suggested Horizon environment:
 - `MCP_TRANSPORT=http`
@@ -214,9 +215,16 @@ Suggested Horizon environment:
 - `MAIN_BACKEND_URL=https://your-main-backend.example.com/api/v1`
 - `MCP_API_KEY=your-shared-secret`
 
+Suggested Horizon target:
+- `horizon_server.py:server`
+
+Alternative module notation if Horizon asks for a Python object path:
+- `horizon_server:server`
+
 Operational notes:
 - `mcp_server.py` keeps Claude Desktop stdio mode working
 - `mcp_remote_server.py` is the remote-friendly entrypoint
+- `horizon_server.py` is the dedicated Prefect Horizon export surface
 - `/health` can be used by load balancers and deployment health probes
 - CORS is enabled for remote HTTP mode through `MCP_CORS_ALLOW_ORIGINS`
 - `X-MCP-API-Key` protects remote MCP access when `MCP_API_KEY` is configured
