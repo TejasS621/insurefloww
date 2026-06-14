@@ -28,6 +28,16 @@ mcp_server.py
 
 ## Supported Tools
 
+- Customer journey tools:
+  - `request_customer_otp`
+  - `verify_customer_otp`
+  - `generate_quote`
+  - `select_quote`
+  - `initiate_payment`
+  - `get_payment_status`
+  - `get_policy`
+  - `download_policy`
+  - `create_ticket`
 - `request_customer_otp`
 - `verify_customer_otp`
 - `admin_login`
@@ -67,11 +77,27 @@ pip install -r mcp/requirements.txt
 Copy-Item mcp/.env.example .env
 ```
 
-4. Start the MCP server:
+4. Start the local stdio MCP server for Claude Desktop:
 
 ```powershell
 python mcp_server.py
 ```
+
+5. Start the remote HTTP MCP server:
+
+```powershell
+$env:MCP_TRANSPORT="http"
+python mcp_remote_server.py
+```
+
+Default remote bind settings:
+- `MCP_HOST=0.0.0.0`
+- `MCP_PORT=8080`
+- `MCP_HTTP_PATH=/mcp`
+- `MCP_HEALTH_PATH=/health`
+
+The remote health check will be available at:
+- `http://localhost:8080/health`
 
 ## Authentication Model
 
@@ -117,6 +143,57 @@ Use the absolute path for your local environment. Example:
 ```
 
 If you prefer a project-local Python install, change the `command` path to the correct interpreter.
+
+## Remote HTTP Configuration
+
+Remote deployments use the same MCP tool set and the same thin orchestration layer. No business logic is duplicated.
+
+Environment variables:
+- `MCP_TRANSPORT=stdio|http`
+- `MCP_HOST=0.0.0.0`
+- `MCP_PORT=8080`
+- `MCP_HTTP_PATH=/mcp`
+- `MCP_HEALTH_PATH=/health`
+- `MCP_CORS_ALLOW_ORIGINS=["*"]`
+
+Local remote run:
+
+```powershell
+$env:MCP_TRANSPORT="http"
+$env:MCP_HOST="0.0.0.0"
+$env:MCP_PORT="8080"
+python mcp_remote_server.py
+```
+
+The FastMCP server uses streamable HTTP for the remote endpoint path configured by `MCP_HTTP_PATH`.
+
+## Deployment Notes
+
+Railway:
+- Set the start command to `python mcp_remote_server.py`
+- Set `MCP_TRANSPORT=http`
+- Set `MCP_HOST=0.0.0.0`
+- Set `MCP_PORT` to Railway's exposed port if required by your service config
+
+Render:
+- Use a Web Service, not a Background Worker
+- Start command: `python mcp_remote_server.py`
+- Set `MCP_TRANSPORT=http`
+- Set `MCP_HOST=0.0.0.0`
+- Set `MCP_PORT=10000` or the port expected by your Render service settings
+
+Horizon:
+- Use `python mcp_remote_server.py` as the runtime command
+- Set `MCP_TRANSPORT=http`
+- Set `MCP_HOST=0.0.0.0`
+- Set `MCP_PORT` to the port exposed by the Horizon deployment
+
+Operational notes:
+- `mcp_server.py` keeps Claude Desktop stdio mode working
+- `mcp_remote_server.py` is the remote-friendly entrypoint
+- `/health` can be used by load balancers and deployment health probes
+- CORS is enabled for remote HTTP mode through `MCP_CORS_ALLOW_ORIGINS`
+- Auth session state remains process-local and in-memory, just like the local MCP server
 
 ## Production Deployment Notes
 
