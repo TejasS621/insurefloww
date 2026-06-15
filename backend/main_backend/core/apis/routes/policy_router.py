@@ -1,4 +1,17 @@
-﻿"""Policy routes for the main backend."""
+"""
+Handle policy routes for the main backend.
+
+Args:
+    None: This module defines customer policy listing, lookup, inline view,
+    and download endpoints under the versioned policy router.
+
+Returns:
+    None: Route handlers return structured policy responses or PDF files.
+
+Raises:
+    HTTPException: Route handlers re-raise handled controller errors and
+    normalize unexpected failures through the shared route guard.
+"""
 
 from __future__ import annotations
 
@@ -9,10 +22,13 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 from odmantic import AIOEngine
 
+from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import to_policy_summary_response
 from backend.main_backend.core.apis.routes.dependencies import get_current_user_id
 from backend.main_backend.core.apis.schemas.responses.common_response import APIResponse
-from backend.main_backend.core.apis.schemas.responses.policy_response import PolicySummaryResponse
+from backend.main_backend.core.apis.schemas.responses.policy_response import (
+    PolicySummaryResponse,
+)
 from backend.main_backend.core.database.database import get_database
 from backend.main_backend.core.models.application_model import Application
 from backend.main_backend.core.services.service_exceptions import (
@@ -25,11 +41,26 @@ policy_router = APIRouter(prefix="/api/v1/policies", tags=["Policies"])
 
 
 @policy_router.get("/me", response_model=APIResponse[list[PolicySummaryResponse]])
+@route_guard
 async def list_my_policies(
     engine: AIOEngine = Depends(get_database),
     user_id: str = Depends(get_current_user_id),
 ) -> APIResponse[list[PolicySummaryResponse]]:
-    """List policies owned by the authenticated customer."""
+    """
+    List all policies owned by the authenticated customer.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        user_id: Authenticated customer identifier used for ownership lookup.
+
+    Returns:
+        APIResponse[list[PolicySummaryResponse]]: Customer policy summaries
+        matched from the linked transaction set.
+
+    Raises:
+        HTTPException: Re-raises domain validation errors or wraps unexpected
+        failures as HTTP 500 responses through the route guard.
+    """
     applications = await engine.find(Application, Application.user_id == user_id)
     transaction_references = {
         application.transaction_reference
@@ -49,12 +80,27 @@ async def list_my_policies(
 
 
 @policy_router.get("/{policy_number}", response_model=APIResponse[PolicySummaryResponse])
+@route_guard
 async def get_policy(
     policy_number: str,
     engine: AIOEngine = Depends(get_database),
     user_id: str = Depends(get_current_user_id),
 ) -> APIResponse[PolicySummaryResponse]:
-    """Fetch a single policy summary for the authenticated customer."""
+    """
+    Fetch one policy summary for the authenticated customer.
+
+    Args:
+        policy_number: External policy number requested by the customer.
+        engine: Active ODMantic database engine dependency.
+        user_id: Authenticated customer identifier used for access control.
+
+    Returns:
+        APIResponse[PolicySummaryResponse]: Requested policy summary.
+
+    Raises:
+        HTTPException: Re-raises domain validation errors or wraps unexpected
+        failures as HTTP 500 responses through the route guard.
+    """
     policy = await engine.find_one(Policy, Policy.policy_number == policy_number)
     if policy is None:
         raise NotFoundServiceError("The requested policy could not be found.")
@@ -66,12 +112,27 @@ async def get_policy(
 
 
 @policy_router.get("/{policy_number}/view", response_class=FileResponse)
+@route_guard
 async def view_policy_document(
     policy_number: str,
     engine: AIOEngine = Depends(get_database),
     user_id: str = Depends(get_current_user_id),
 ) -> FileResponse:
-    """Render an issued customer policy PDF inline for browser viewing."""
+    """
+    Render an issued policy PDF inline for browser viewing.
+
+    Args:
+        policy_number: External policy number requested by the customer.
+        engine: Active ODMantic database engine dependency.
+        user_id: Authenticated customer identifier used for access control.
+
+    Returns:
+        FileResponse: Inline PDF response for browser viewing.
+
+    Raises:
+        HTTPException: Re-raises domain validation errors or wraps unexpected
+        failures as HTTP 500 responses through the route guard.
+    """
     policy = await engine.find_one(Policy, Policy.policy_number == policy_number)
     if policy is None:
         raise NotFoundServiceError("The requested policy could not be found.")
@@ -92,12 +153,27 @@ async def view_policy_document(
 
 
 @policy_router.get("/{policy_number}/download", response_class=FileResponse)
+@route_guard
 async def download_policy_document(
     policy_number: str,
     engine: AIOEngine = Depends(get_database),
     user_id: str = Depends(get_current_user_id),
 ) -> FileResponse:
-    """Download an issued customer policy PDF as an attachment."""
+    """
+    Download an issued policy PDF as an attachment.
+
+    Args:
+        policy_number: External policy number requested by the customer.
+        engine: Active ODMantic database engine dependency.
+        user_id: Authenticated customer identifier used for access control.
+
+    Returns:
+        FileResponse: PDF attachment response for download.
+
+    Raises:
+        HTTPException: Re-raises domain validation errors or wraps unexpected
+        failures as HTTP 500 responses through the route guard.
+    """
     policy = await engine.find_one(Policy, Policy.policy_number == policy_number)
     if policy is None:
         raise NotFoundServiceError("The requested policy could not be found.")
@@ -121,7 +197,21 @@ async def _ensure_policy_owner(
     transaction_reference: str,
     user_id: str,
 ) -> None:
-    """Validate that the current customer owns the policy transaction being accessed."""
+    """
+    Validate that the current customer owns the requested policy transaction.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        transaction_reference: Transaction reference linked to the policy.
+        user_id: Authenticated customer identifier used for access control.
+
+    Returns:
+        None: Ownership is enforced through validation and persistence updates.
+
+    Raises:
+        AuthorizationServiceError: Raised when the policy belongs to another user.
+        NotFoundServiceError: Raised when the linked application cannot be found.
+    """
     application = await engine.find_one(
         Application,
         Application.transaction_reference == transaction_reference,

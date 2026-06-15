@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 from odmantic import AIOEngine
 
+from backend.provider_backend.core.apis.routes._helpers import route_guard
 from backend.provider_backend.core.apis.routes._mappers import (
     to_retry_processing_response,
     to_sync_status_response,
@@ -24,7 +25,7 @@ from backend.provider_backend.core.services.provider_sync_service import (
     provider_sync_service,
 )
 
-sync_router = APIRouter(prefix="/api/v1/provider/sync", tags=["Provider Sync"])
+sync_router = APIRouter(prefix="/api/v1/sync", tags=["Provider Sync"])
 
 
 @sync_router.post(
@@ -32,6 +33,7 @@ sync_router = APIRouter(prefix="/api/v1/provider/sync", tags=["Provider Sync"])
     response_model=APIResponse[ProviderSyncStatusResponse],
     status_code=status.HTTP_202_ACCEPTED,
 )
+@route_guard
 async def dispatch_provider_sync(
     request_data: ProviderSyncDispatchRequest,
     engine: AIOEngine = Depends(get_database),
@@ -52,6 +54,7 @@ async def dispatch_provider_sync(
     "/retries/process",
     response_model=APIResponse[RetryProcessingResponse],
 )
+@route_guard
 async def process_due_retries(
     request_data: RetryProcessingRequest,
     engine: AIOEngine = Depends(get_database),
@@ -72,6 +75,7 @@ async def process_due_retries(
     "/retries",
     response_model=APIResponse[list[ProviderSyncStatusResponse]],
 )
+@route_guard
 async def list_sync_retries(
     engine: AIOEngine = Depends(get_database),
     _: object = Depends(get_current_provider_admin_principal),

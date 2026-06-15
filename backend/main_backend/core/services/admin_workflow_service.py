@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+"""
+Service responsibilities:
+- coordinate admin ticket workflows and assignments
+- manage provider lifecycle records and dashboard statistics
+- persist audit-friendly state transitions across admin actions
+"""
+
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone

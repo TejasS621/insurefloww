@@ -1,8 +1,20 @@
-﻿"""FastAPI application bootstrap for the provider backend."""
+"""
+Bootstrap the provider backend FastAPI application.
+
+Args:
+    None: This module defines the FastAPI app instance, middleware, router
+    registration, and shared exception handlers for the provider backend.
+
+Returns:
+    None: Importing this module exposes the configured FastAPI application.
+
+Raises:
+    HTTPException: Route-level exceptions are normalized through registered
+    handlers before being returned to API clients.
+"""
 
 from __future__ import annotations
 
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -11,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.provider_backend.commons.config import settings
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.apis.routes import (
     auth_router,
     health_router,
@@ -30,12 +43,24 @@ from backend.provider_backend.core.services.broker_service import broker_service
 from backend.provider_backend.core.services.catalog_seeder import seed_catalog
 from backend.provider_backend.core.services.service_exceptions import ServiceError
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Manage application startup and shutdown resources."""
+    """
+    Manage startup and shutdown resources for the provider backend.
+
+    Args:
+        _: FastAPI application instance supplied by the lifespan hook.
+
+    Returns:
+        AsyncIterator[None]: Control back to FastAPI while the app is running.
+
+    Raises:
+        Exception: Propagates startup or shutdown failures so the process does
+        not continue in a partially initialized state.
+    """
     logger.info("Starting %s", settings.app_name)
     engine = await connect_to_mongo()
     await broker_service.ensure_integration_broker(engine)
@@ -69,7 +94,20 @@ app.add_middleware(
 async def validation_exception_handler(
     _: Request, exc: RequestValidationError
 ) -> JSONResponse:
-    """Return a structured validation error response."""
+    """
+    Convert request validation failures into a consistent API response.
+
+    Args:
+        _: Request instance supplied by FastAPI.
+        exc: Validation exception raised while parsing the incoming request.
+
+    Returns:
+        JSONResponse: Structured validation error payload for the client.
+
+    Raises:
+        RequestValidationError: Captured here and translated into JSON rather
+        than being exposed as a raw framework error.
+    """
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
@@ -82,7 +120,19 @@ async def validation_exception_handler(
 
 @app.exception_handler(ServiceError)
 async def service_exception_handler(_: Request, exc: ServiceError) -> JSONResponse:
-    """Convert service-layer errors into structured API responses."""
+    """
+    Convert service-layer errors into structured API responses.
+
+    Args:
+        _: Request instance supplied by FastAPI.
+        exc: Domain-level service exception raised by provider services.
+
+    Returns:
+        JSONResponse: Structured error payload using the mapped status code.
+
+    Raises:
+        ServiceError: Captured here and converted into a safe API response.
+    """
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -95,14 +145,26 @@ async def service_exception_handler(_: Request, exc: ServiceError) -> JSONRespon
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
-    """Prevent raw exceptions from leaking to clients."""
+    """
+    Prevent raw unexpected exceptions from leaking to clients.
+
+    Args:
+        _: Request instance supplied by FastAPI.
+        exc: Unexpected exception raised during request handling.
+
+    Returns:
+        JSONResponse: Generic internal server error payload.
+
+    Raises:
+        Exception: Logged here before being converted into a safe response.
+    """
     logger.exception("Unhandled error in provider backend", exc_info=exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "success": False,
             "message": "An unexpected server error occurred.",
-            "errors": [{"type": "server_error", "detail": str(exc)}],
+            "errors": [{"type": "server_error", "detail": "Internal server error"}],
         },
     )
 

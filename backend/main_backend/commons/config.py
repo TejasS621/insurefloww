@@ -31,10 +31,10 @@ class Settings(BaseSettings):
     customer_otp_expiry_minutes: int = Field(default=10, ge=1, le=60)
     customer_otp_length: int = Field(default=6, ge=4, le=8)
     provider_payment_create_url: str = Field(
-        default="http://127.0.0.1:8001/api/v1/provider/payments/create"
+        default="http://127.0.0.1:8001/api/v1/payments/create"
     )
     provider_quote_generate_url: str = Field(
-        default="http://127.0.0.1:8001/api/v1/provider/quotes/generate"
+        default="http://127.0.0.1:8001/api/v1/quotes/generate"
     )
     provider_request_timeout_seconds: float = Field(default=10.0, gt=0)
     integration_broker_code: str = Field(default="MAINAPP")

@@ -1,34 +1,73 @@
-﻿"""Quote routes for the main backend."""
+"""
+Handle quote routes for the main backend.
+
+Args:
+    None: This module defines customer quote-selection endpoints used after
+    quote generation and before payment initiation.
+
+Returns:
+    None: Route handlers return structured quote responses under
+    `/api/v1/quotes`.
+
+Raises:
+    HTTPException: Route handlers re-raise handled controller errors and
+    normalize unexpected failures through the shared route guard.
+"""
 
 from __future__ import annotations
+
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 from odmantic import AIOEngine
 
+from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import to_quote_response
 from backend.main_backend.core.apis.routes.dependencies import get_optional_user_id
-from backend.main_backend.core.apis.schemas.requests.quote_request import QuoteSelectRequest
+from backend.main_backend.core.apis.schemas.requests.quote_request import (
+    QuoteSelectRequest,
+)
 from backend.main_backend.core.apis.schemas.responses.common_response import APIResponse
-from backend.main_backend.core.apis.schemas.responses.quote_response import NormalizedQuoteResponse
+from backend.main_backend.core.apis.schemas.responses.quote_response import (
+    NormalizedQuoteResponse,
+)
 from backend.main_backend.core.database.database import get_database
 from backend.main_backend.core.models.application_model import Application
 from backend.main_backend.core.models.quote_model import Quote
-from datetime import datetime, timezone
-
-from backend.main_backend.core.services.service_exceptions import AuthorizationServiceError, NotFoundServiceError
 from backend.main_backend.core.services.quote_service import quote_service
+from backend.main_backend.core.services.service_exceptions import (
+    AuthorizationServiceError,
+    NotFoundServiceError,
+)
 
 quote_router = APIRouter(prefix="/api/v1/quotes", tags=["Quotes"])
 
 
 @quote_router.post("/select/{quote_id}", response_model=APIResponse[NormalizedQuoteResponse])
+@route_guard
 async def select_quote(
     quote_id: str,
     request_data: QuoteSelectRequest,
     engine: AIOEngine = Depends(get_database),
     user_id: str | None = Depends(get_optional_user_id),
 ) -> APIResponse[NormalizedQuoteResponse]:
-    """Select a quote for a guest or authenticated customer and update pricing totals."""
+    """
+    Select a quote for a guest or authenticated customer journey.
+
+    Args:
+        quote_id: Provider quote identifier selected by the customer.
+        request_data: Payload containing the selected add-on codes.
+        engine: Active ODMantic database engine dependency.
+        user_id: Optional authenticated customer identifier for ownership checks.
+
+    Returns:
+        APIResponse[NormalizedQuoteResponse]: Selected quote details after
+        pricing totals have been propagated to the transaction.
+
+    Raises:
+        HTTPException: Re-raises domain validation errors or wraps unexpected
+        failures as HTTP 500 responses through the route guard.
+    """
     quote_record = await engine.find_one(Quote, Quote.provider_quote_id == quote_id)
     if quote_record is None:
         raise NotFoundServiceError("The requested quote could not be found.")
@@ -43,7 +82,11 @@ async def select_quote(
         application.user_id = user_id
         application.updated_at = datetime.now(timezone.utc)
         await engine.save(application)
-    elif application.user_id is not None and user_id is not None and application.user_id != user_id:
+    elif (
+        application.user_id is not None
+        and user_id is not None
+        and application.user_id != user_id
+    ):
         raise AuthorizationServiceError("You are not allowed to select this quote.")
 
     quote = await quote_service.select_quote(

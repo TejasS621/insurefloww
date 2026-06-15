@@ -1,4 +1,18 @@
-﻿"""Quote generation services for the provider backend."""
+"""
+Implement provider-side quote generation services for the provider backend.
+
+Args:
+    None: This module defines the service layer responsible for creating
+    provider transactions and generating quote records.
+
+Returns:
+    None: Service methods return persisted provider quote records used by the
+    provider API and synchronization flows.
+
+Raises:
+    ServiceError: Validation and integration errors are raised when quote
+    generation cannot be completed safely.
+"""
 
 from __future__ import annotations
 
@@ -36,16 +50,44 @@ from .risk_engine import risk_engine
 
 
 class ProviderQuoteService:
-    """Generate provider-side quotes and provider transaction state."""
+    """
+    Generate provider-side quotes and maintain provider transaction state.
+
+    Args:
+        None: Service state is derived from method inputs and database calls.
+
+    Returns:
+        None: Instance methods return provider quote workflow results.
+
+    Raises:
+        ServiceError: Domain-specific service exceptions are raised when
+        provider quote generation fails validation.
+    """
 
     async def generate_quotes(
         self,
         engine: AIOEngine,
         request_data: ProviderQuoteCreateRequest,
     ) -> list[ProviderQuote]:
-        """Generate one or more provider quotes for a quote request."""
+        """
+        Generate one or more provider quotes for an incoming quote request.
+
+        Args:
+            engine: Active ODMantic database engine dependency.
+            request_data: Validated provider quote request payload.
+
+        Returns:
+            list[ProviderQuote]: Persisted provider quote records generated for
+            the supplied application and provider context.
+
+        Raises:
+            ServiceError: Propagates when provider quote generation or
+            persistence cannot be completed safely.
+        """
         insurance_type = ModelInsuranceType(request_data.insurance_type.value)
-        provider_transaction = await self._get_or_create_provider_transaction(engine, request_data)
+        provider_transaction = await self._get_or_create_provider_transaction(
+            engine, request_data
+        )
         active_plans = await engine.find(
             InsurancePlan,
             (InsurancePlan.provider_code == request_data.provider_code)
@@ -85,8 +127,12 @@ class ProviderQuoteService:
             health_details=(
                 HealthDetails(
                     **{
-                        **request_data.health_details.model_dump(exclude={"other_conditions"}),
-                        "other_conditions": ", ".join(request_data.health_details.other_conditions)
+                        **request_data.health_details.model_dump(
+                            exclude={"other_conditions"}
+                        ),
+                        "other_conditions": ", ".join(
+                            request_data.health_details.other_conditions
+                        )
                         if request_data.health_details.other_conditions
                         else None,
                     }
@@ -104,8 +150,12 @@ class ProviderQuoteService:
 
         stored_quotes: list[ProviderQuote] = []
         for index, plan in enumerate(plans, start=1):
-            plan_code = getattr(plan, "plan_code", f"{request_data.insurance_type.value}-PLAN-{index}")
-            plan_name = getattr(plan, "plan_name", f"{request_data.insurance_type.value.title()} Plan {index}")
+            plan_code = getattr(
+                plan, "plan_code", f"{request_data.insurance_type.value}-PLAN-{index}"
+            )
+            plan_name = getattr(
+                plan, "plan_name", f"{request_data.insurance_type.value.title()} Plan {index}"
+            )
             plan_multiplier = 1.0 + ((index - 1) * 0.12)
             premium = premium_engine.calculate(
                 insurance_type=insurance_type,
@@ -133,8 +183,12 @@ class ProviderQuoteService:
             await engine.save(quote)
             stored_quotes.append(quote)
 
-        provider_transaction.execution_status = ProviderTransactionStatus.QUOTE_GENERATED
-        provider_transaction.quote_reference = stored_quotes[0].provider_quote_id if stored_quotes else None
+        provider_transaction.execution_status = (
+            ProviderTransactionStatus.QUOTE_GENERATED
+        )
+        provider_transaction.quote_reference = (
+            stored_quotes[0].provider_quote_id if stored_quotes else None
+        )
         provider_transaction.updated_at = datetime.now(timezone.utc)
         await engine.save(provider_transaction)
         return stored_quotes
@@ -144,10 +198,23 @@ class ProviderQuoteService:
         engine: AIOEngine,
         request_data: ProviderQuoteCreateRequest,
     ) -> ProviderTransaction:
-        """Fetch or create the provider transaction tied to a main transaction."""
+        """
+        Fetch or create the provider transaction linked to a main transaction.
+
+        Args:
+            engine: Active ODMantic database engine dependency.
+            request_data: Validated provider quote request payload.
+
+        Returns:
+            ProviderTransaction: Existing or newly created provider transaction.
+
+        Raises:
+            ServiceError: Propagates if provider transaction persistence fails.
+        """
         provider_transaction = await engine.find_one(
             ProviderTransaction,
-            ProviderTransaction.main_transaction_reference == request_data.main_transaction_reference,
+            ProviderTransaction.main_transaction_reference
+            == request_data.main_transaction_reference,
         )
         if provider_transaction is not None:
             return provider_transaction
@@ -167,7 +234,18 @@ class ProviderQuoteService:
     def _build_fallback_plans(
         request_data: ProviderQuoteCreateRequest,
     ) -> list[InsurancePlan]:
-        """Create in-memory fallback plan definitions when catalog data is missing."""
+        """
+        Create in-memory fallback plans when catalog data is unavailable.
+
+        Args:
+            request_data: Validated provider quote request payload.
+
+        Returns:
+            list[InsurancePlan]: In-memory fallback plan definitions.
+
+        Raises:
+            ValueError: Propagates if request values cannot build valid plans.
+        """
         return [
             InsurancePlan(
                 plan_code=f"{request_data.insurance_type.value}-BASIC",
@@ -194,7 +272,18 @@ class ProviderQuoteService:
 
     @staticmethod
     def _generate_reference(prefix: str) -> str:
-        """Generate a provider-facing external reference value."""
+        """
+        Generate a provider-facing external reference value.
+
+        Args:
+            prefix: Reference prefix such as `PQT` or `PTX`.
+
+        Returns:
+            str: Generated provider reference value.
+
+        Raises:
+            ValueError: Propagates if invalid reference input is supplied.
+        """
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d")
         return f"{prefix}-{timestamp}-{secrets.token_hex(3).upper()}"
 

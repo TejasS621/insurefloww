@@ -38,10 +38,10 @@ class Settings(BaseSettings):
         default="http://127.0.0.1:8000/api/v1/provider-sync/webhook"
     )
     default_broker_webhook_url: str = Field(
-        default="http://127.0.0.1:8001/api/v1/provider/webhook"
+        default="http://127.0.0.1:8001/api/v1/webhooks/payment-success"
     )
     default_provider_webhook_url: str = Field(
-        default="http://127.0.0.1:8001/api/v1/provider/webhook"
+        default="http://127.0.0.1:8001/api/v1/webhooks/payment-success"
     )
     cors_allowed_origins: list[str] = Field(
         default_factory=lambda: [
