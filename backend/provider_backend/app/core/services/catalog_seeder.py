@@ -23,32 +23,49 @@ PROVIDERS = [
     {
         "provider_code": "DEMO_PROVIDER",
         "provider_name": "InsureFlow Demo Provider",
+        "company_name": "InsureFlow Demo Provider",
         "contact_email": "support@demo-provider.in",
         "contact_phone": "9800000001",
+        "supported_insurance_types": ["HEALTH", "VEHICLE", "TRAVEL", "HOME"],
+        "supported_regions": ["PAN_INDIA"],
+        "serviceable_products": ["Retail Policies", "Family Floaters"],
+        "notes": "Default seeded provider used for local demo flows.",
         "webhook_url": "http://127.0.0.1:8001/api/v1/provider/webhook",
         "status": ProviderStatus.ACTIVE,
     },
     {
         "provider_code": "HDFC_ERGO",
         "provider_name": "HDFC ERGO Health Insurance",
+        "company_name": "HDFC ERGO General Insurance Company Limited",
         "contact_email": "support@hdfcergo.com",
         "contact_phone": "9800000002",
+        "supported_insurance_types": ["HEALTH"],
+        "supported_regions": ["PAN_INDIA"],
+        "serviceable_products": ["Retail Health", "Family Health"],
         "webhook_url": "http://127.0.0.1:8001/api/v1/provider/webhook",
         "status": ProviderStatus.ACTIVE,
     },
     {
         "provider_code": "STAR_HEALTH",
         "provider_name": "Star Health & Allied Insurance",
+        "company_name": "Star Health & Allied Insurance Co. Ltd.",
         "contact_email": "care@starhealth.in",
         "contact_phone": "9800000003",
+        "supported_insurance_types": ["HEALTH"],
+        "supported_regions": ["PAN_INDIA"],
+        "serviceable_products": ["Individual Health", "Senior Citizen Health"],
         "webhook_url": "http://127.0.0.1:8001/api/v1/provider/webhook",
         "status": ProviderStatus.ACTIVE,
     },
     {
         "provider_code": "LIC_INDIA",
         "provider_name": "Life Insurance Corporation of India",
+        "company_name": "Life Insurance Corporation of India",
         "contact_email": "info@licindia.in",
         "contact_phone": "9800000004",
+        "supported_insurance_types": ["LIFE"],
+        "supported_regions": ["PAN_INDIA"],
+        "serviceable_products": ["Term Life", "Savings Plans"],
         "webhook_url": "http://127.0.0.1:8001/api/v1/provider/webhook",
         "status": ProviderStatus.ACTIVE,
     },
@@ -381,8 +398,35 @@ ADDONS = [
 ]
 
 
+async def _backfill_legacy_provider_documents(engine: AIOEngine) -> None:
+    """Populate newly-added provider fields on older MongoDB documents."""
+
+    collection = engine.get_collection(Provider)
+    await collection.update_many(
+        {"company_name": {"$exists": False}},
+        {"$set": {"company_name": None}},
+    )
+    await collection.update_many(
+        {"supported_insurance_types": {"$exists": False}},
+        {"$set": {"supported_insurance_types": []}},
+    )
+    await collection.update_many(
+        {"supported_regions": {"$exists": False}},
+        {"$set": {"supported_regions": []}},
+    )
+    await collection.update_many(
+        {"serviceable_products": {"$exists": False}},
+        {"$set": {"serviceable_products": []}},
+    )
+    await collection.update_many(
+        {"notes": {"$exists": False}},
+        {"$set": {"notes": None}},
+    )
+
+
 async def seed_catalog(engine: AIOEngine) -> None:
     """Seed providers, plans and add-ons.  Safe to call on every startup."""
+    await _backfill_legacy_provider_documents(engine)
 
     # ── Providers ──────────────────────────────────────────────────────────
     for p in PROVIDERS:

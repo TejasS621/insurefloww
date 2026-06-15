@@ -1,4 +1,4 @@
-"""Request and response schemas for policy tools."""
+"""Request and response schemas for shared policy helpers."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from insureflow_mcp.schemas.common import FileMetadata
 
 
 class GetPolicyInput(BaseModel):
-    """Input accepted by the policy lookup tool."""
+    """Input accepted by the policy lookup helper."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -16,7 +16,7 @@ class GetPolicyInput(BaseModel):
 
 
 class PolicyOutput(BaseModel):
-    """Policy details returned to the MCP client."""
+    """Policy details returned to shared clients."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -32,7 +32,7 @@ class PolicyOutput(BaseModel):
 
 
 class DownloadPolicyInput(BaseModel):
-    """Input accepted by the policy-download tool."""
+    """Input accepted by the policy-download helper."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -40,5 +40,4 @@ class DownloadPolicyInput(BaseModel):
 
 
 class DownloadPolicyOutput(FileMetadata):
-    """Downloaded policy file metadata returned to the MCP client."""
-
+    """Downloaded policy file metadata returned to shared clients."""

@@ -27,6 +27,7 @@ class BrokerService:
 
     async def ensure_integration_broker(self, engine: AIOEngine) -> BrokerRegistry:
         """Ensure the default local integration broker exists for backend-to-backend calls."""
+        await self._backfill_legacy_broker_documents(engine)
         broker = await engine.find_one(
             BrokerRegistry,
             BrokerRegistry.broker_code == settings.integration_broker_code,
@@ -44,8 +45,12 @@ class BrokerService:
             broker_code=settings.integration_broker_code,
             broker_name="Main Backend Integration",
             api_key_hash=self._hash_api_key(settings.integration_broker_api_key),
-            callback_url="http://127.0.0.1:8000/api/v1/provider-sync/webhook",
-            webhook_url="http://127.0.0.1:8000/api/v1/provider-sync/webhook",
+            company_name="InsureFlow Main Backend",
+            supported_insurance_types=["HEALTH", "LIFE", "VEHICLE", "TRAVEL", "HOME"],
+            active_regions=["PAN_INDIA"],
+            partner_provider_codes=["DEMO_PROVIDER"],
+            callback_url=settings.default_broker_callback_url,
+            webhook_url=settings.default_broker_webhook_url,
             status=BrokerStatus.ACTIVE,
             created_by_admin="system",
         )
@@ -58,6 +63,7 @@ class BrokerService:
         request_data: BrokerRegistrationRequest,
     ) -> tuple[BrokerRegistry, str]:
         """Register a broker and return the one-time raw API key."""
+        await self._backfill_legacy_broker_documents(engine)
         existing = await engine.find_one(
             BrokerRegistry,
             BrokerRegistry.broker_code == request_data.broker_code,
@@ -66,12 +72,32 @@ class BrokerService:
             raise ConflictServiceError("A broker with the given code already exists.")
 
         api_key = self._generate_api_key()
+        callback_url = (
+            str(request_data.callback_url)
+            if request_data.callback_url is not None
+            else settings.default_broker_callback_url
+        )
+        webhook_url = (
+            str(request_data.webhook_url)
+            if request_data.webhook_url is not None
+            else settings.default_broker_webhook_url
+        )
         broker = BrokerRegistry(
             broker_code=request_data.broker_code,
             broker_name=request_data.broker_name,
+            company_name=request_data.company_name,
+            license_number=request_data.license_number,
+            registration_number=request_data.registration_number,
+            contact_person_name=request_data.contact_person_name,
+            contact_email=str(request_data.contact_email) if request_data.contact_email else None,
+            contact_phone=request_data.contact_phone,
+            supported_insurance_types=request_data.supported_insurance_types,
+            active_regions=request_data.active_regions,
+            partner_provider_codes=request_data.partner_provider_codes,
+            notes=request_data.notes,
             api_key_hash=self._hash_api_key(api_key),
-            callback_url=str(request_data.callback_url),
-            webhook_url=str(request_data.webhook_url),
+            callback_url=callback_url,
+            webhook_url=webhook_url,
             status=BrokerStatus.ACTIVE,
             created_by_admin=request_data.created_by_admin,
         )
@@ -80,6 +106,7 @@ class BrokerService:
 
     async def list_brokers(self, engine: AIOEngine) -> list[BrokerRegistry]:
         """Return all registered brokers."""
+        await self._backfill_legacy_broker_documents(engine)
         return await engine.find(BrokerRegistry)
 
     async def update_broker_status(
@@ -115,10 +142,55 @@ class BrokerService:
 
     async def _get_broker(self, engine: AIOEngine, broker_code: str) -> BrokerRegistry:
         """Fetch a broker by broker code or raise a typed not-found error."""
+        await self._backfill_legacy_broker_documents(engine)
         broker = await engine.find_one(BrokerRegistry, BrokerRegistry.broker_code == broker_code)
         if broker is None:
             raise NotFoundServiceError("The requested broker could not be found.")
         return broker
+
+    async def _backfill_legacy_broker_documents(self, engine: AIOEngine) -> None:
+        """Populate newly-added broker fields on older MongoDB documents."""
+        collection = engine.get_collection(BrokerRegistry)
+        await collection.update_many(
+            {"supported_insurance_types": {"$exists": False}},
+            {"$set": {"supported_insurance_types": []}},
+        )
+        await collection.update_many(
+            {"active_regions": {"$exists": False}},
+            {"$set": {"active_regions": []}},
+        )
+        await collection.update_many(
+            {"partner_provider_codes": {"$exists": False}},
+            {"$set": {"partner_provider_codes": []}},
+        )
+        await collection.update_many(
+            {"company_name": {"$exists": False}},
+            {"$set": {"company_name": None}},
+        )
+        await collection.update_many(
+            {"license_number": {"$exists": False}},
+            {"$set": {"license_number": None}},
+        )
+        await collection.update_many(
+            {"registration_number": {"$exists": False}},
+            {"$set": {"registration_number": None}},
+        )
+        await collection.update_many(
+            {"contact_person_name": {"$exists": False}},
+            {"$set": {"contact_person_name": None}},
+        )
+        await collection.update_many(
+            {"contact_email": {"$exists": False}},
+            {"$set": {"contact_email": None}},
+        )
+        await collection.update_many(
+            {"contact_phone": {"$exists": False}},
+            {"$set": {"contact_phone": None}},
+        )
+        await collection.update_many(
+            {"notes": {"$exists": False}},
+            {"$set": {"notes": None}},
+        )
 
     @staticmethod
     def _generate_api_key() -> str:

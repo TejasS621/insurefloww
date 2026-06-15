@@ -6,6 +6,7 @@ from backend.main_backend.app.core.apis.schemas.responses.admin_response import 
     AdminApplicationResponse,
     AdminPaymentResponse,
     AdminPolicyResponse,
+    ProviderRegistryResponse as AdminProviderRegistryResponse,
     AdminTicketResponse,
     AdminTransactionDetailResponse,
     AdminTransactionResponse,
@@ -48,6 +49,7 @@ from backend.main_backend.app.core.models.webhook_event_model import WebhookEven
 from backend.provider_backend.app.core.models.broker_registry_model import BrokerRegistry
 from backend.provider_backend.app.core.models.payment_model import Payment as ProviderPayment
 from backend.provider_backend.app.core.models.policy_model import Policy
+from backend.provider_backend.app.core.models.provider_model import Provider
 from backend.provider_backend.app.core.models.provider_quote_model import ProviderQuote
 from backend.main_backend.app.core.services.payment_service import ProviderHostedPaymentSession
 
@@ -188,13 +190,39 @@ def to_admin_broker_response(broker: BrokerRegistry) -> AdminBrokerRegistryRespo
     return AdminBrokerRegistryResponse(
         broker_code=broker.broker_code,
         broker_name=broker.broker_name,
-        callback_url=broker.callback_url,
-        webhook_url=broker.webhook_url,
+        company_name=broker.company_name,
+        license_number=broker.license_number,
+        registration_number=broker.registration_number,
+        contact_person_name=broker.contact_person_name,
+        contact_email=broker.contact_email,
+        contact_phone=broker.contact_phone,
+        supported_insurance_types=broker.supported_insurance_types,
+        active_regions=broker.active_regions,
+        partner_provider_codes=broker.partner_provider_codes,
+        notes=broker.notes,
         status=broker.status.value,
         created_by_admin=broker.created_by_admin,
         last_key_rotated_at=broker.last_key_rotated_at,
         created_at=broker.created_at,
         updated_at=broker.updated_at,
+    )
+
+
+def to_admin_provider_response(provider: Provider) -> AdminProviderRegistryResponse:
+    """Convert a provider record into the main admin response schema."""
+    return AdminProviderRegistryResponse(
+        provider_code=provider.provider_code,
+        provider_name=provider.provider_name,
+        company_name=provider.company_name,
+        contact_email=provider.contact_email,
+        contact_phone=provider.contact_phone,
+        supported_insurance_types=provider.supported_insurance_types,
+        supported_regions=provider.supported_regions,
+        serviceable_products=provider.serviceable_products,
+        notes=provider.notes,
+        status=provider.status.value,
+        created_at=provider.created_at,
+        updated_at=provider.updated_at,
     )
 
 

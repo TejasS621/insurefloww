@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl
 
 
 class BrokerStatus(str, Enum):
@@ -22,8 +22,18 @@ class BrokerRegistrationRequest(BaseModel):
 
     broker_name: str = Field(..., min_length=2, max_length=120)
     broker_code: str = Field(..., min_length=2, max_length=50)
-    callback_url: HttpUrl
-    webhook_url: HttpUrl
+    company_name: str | None = Field(default=None, min_length=2, max_length=160)
+    license_number: str | None = Field(default=None, max_length=80)
+    registration_number: str | None = Field(default=None, max_length=80)
+    contact_person_name: str | None = Field(default=None, min_length=2, max_length=120)
+    contact_email: EmailStr | None = None
+    contact_phone: str | None = Field(default=None, min_length=10, max_length=15)
+    supported_insurance_types: list[str] = Field(default_factory=list)
+    active_regions: list[str] = Field(default_factory=list)
+    partner_provider_codes: list[str] = Field(default_factory=list)
+    notes: str | None = Field(default=None, max_length=1000)
+    callback_url: HttpUrl | None = None
+    webhook_url: HttpUrl | None = None
     created_by_admin: str | None = Field(default=None, max_length=120)
 
 

@@ -1,4 +1,4 @@
-"""MCP policy tools implemented as thin adapters over InsureFlow APIs."""
+"""Shared policy tool adapters used outside the public MCP tool list."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from insureflow_mcp.schemas.policies import DownloadPolicyInput, DownloadPolicyO
 
 
 class PolicyTools:
-    """Policy-oriented orchestration helpers used by the MCP server."""
+    """Thin policy adapters reused by integrations like the voice bot."""
 
     def __init__(self, *, settings: MCPSettings, auth_session: AuthSessionStore, main_client: MainBackendClient) -> None:
         self.settings = settings
@@ -26,7 +26,10 @@ class PolicyTools:
         """Fetch a policy summary through the authenticated main backend route."""
 
         try:
-            response = await self.main_client.get_policy(payload.policy_number, self.auth_session.get_customer_token())
+            response = await self.main_client.get_policy(
+                payload.policy_number,
+                self.auth_session.get_customer_token(),
+            )
             data = extract_api_data(response)
             if not isinstance(data, dict):
                 raise BackendRequestError("Main backend returned a malformed policy response.")
@@ -36,18 +39,10 @@ class PolicyTools:
                 policy_status=str(data.get("policy_status", "UNKNOWN")),
                 coverage_amount=float(data.get("coverage_amount", 0.0)),
                 premium_amount=float(data.get("premium_amount", 0.0)),
-                issue_date=(
-                    str(data["issue_date"]) if data.get("issue_date") is not None else None
-                ),
-                start_date=(
-                    str(data["start_date"]) if data.get("start_date") is not None else None
-                ),
-                end_date=(
-                    str(data["end_date"]) if data.get("end_date") is not None else None
-                ),
-                policy_document_url=(
-                    str(data["document_url"]) if data.get("document_url") is not None else None
-                ),
+                issue_date=str(data["issue_date"]) if data.get("issue_date") is not None else None,
+                start_date=str(data["start_date"]) if data.get("start_date") is not None else None,
+                end_date=str(data["end_date"]) if data.get("end_date") is not None else None,
+                policy_document_url=str(data["document_url"]) if data.get("document_url") is not None else None,
             )
             return success_result("Policy fetched successfully.", result)
         except MCPToolError as exc:
@@ -73,24 +68,15 @@ class PolicyTools:
 
 
 def register_policy_tools(mcp_server: Any, tools: PolicyTools) -> None:
-    """Register policy tool handlers on the running MCP server."""
+    """Register policy helpers on an MCP server when an integration needs them."""
 
-    @mcp_server.tool(
-        name="get_policy",
-        description="Retrieve customer policy details by policy number using the authenticated main backend API.",
-    )
+    @mcp_server.tool(name="get_policy", description="Retrieve customer policy details by policy number.")
     async def get_policy(payload: GetPolicyInput) -> dict[str, Any]:
-        """Fetch policy details for Claude."""
+        """Fetch policy details for the caller."""
 
         return (await tools.get_policy(payload)).model_dump(mode="json")
 
-    @mcp_server.tool(
-        name="download_policy",
-        description=(
-            "Download a customer policy PDF and return local file metadata. "
-            "This tool stores the file in the MCP download directory."
-        ),
-    )
+    @mcp_server.tool(name="download_policy", description="Download a customer policy PDF.")
     async def download_policy(payload: DownloadPolicyInput) -> dict[str, Any]:
         """Download a customer policy PDF and return the saved file reference."""
 

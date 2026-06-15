@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     sync_retry_delay_seconds: int = Field(default=300, ge=5, le=86400)
     integration_broker_code: str = Field(default="MAINAPP")
     integration_broker_api_key: str = Field(default="mainapp_dev_api_key")
+    default_broker_callback_url: str = Field(
+        default="http://127.0.0.1:8000/api/v1/provider-sync/webhook"
+    )
+    default_broker_webhook_url: str = Field(
+        default="http://127.0.0.1:8001/api/v1/provider/webhook"
+    )
+    default_provider_webhook_url: str = Field(
+        default="http://127.0.0.1:8001/api/v1/provider/webhook"
+    )
     cors_allowed_origins: list[str] = Field(
         default_factory=lambda: [
             "http://127.0.0.1:5173",

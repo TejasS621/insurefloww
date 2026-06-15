@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
+import { AlertTriangle, Check, Copy, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "../../components/ui/Button";
@@ -7,6 +7,7 @@ import { ErrorCard } from "../../components/ui/ErrorCard";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { TextareaField } from "../../components/ui/TextareaField";
 import { TextInput } from "../../components/ui/TextInput";
 import { adminApi, type BrokerSummary } from "../../services/api/admin";
 import { normalizeApiError } from "../../utils/apiErrors";
@@ -18,6 +19,8 @@ type BrokerModalState =
   | "deactivateConfirm"
   | "rotateConfirm"
   | "rotateKey";
+
+const INSURANCE_TYPE_OPTIONS = ["HEALTH", "LIFE", "VEHICLE", "TRAVEL", "HOME"] as const;
 
 /**
  * BrokerManagementScreen now loads brokers from the API and applies optimistic broker updates.
@@ -35,8 +38,16 @@ export function BrokerManagementScreen() {
   const [formValues, setFormValues] = useState({
     brokerName: "",
     brokerCode: "",
-    callbackUrl: "",
-    webhookUrl: "",
+    companyName: "",
+    licenseNumber: "",
+    registrationNumber: "",
+    contactPersonName: "",
+    contactEmail: "",
+    contactPhone: "",
+    supportedInsuranceTypes: [] as string[],
+    activeRegions: "",
+    partnerProviderCodes: "",
+    notes: "",
   });
 
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -64,6 +75,35 @@ export function BrokerManagementScreen() {
     setTransientApiKey(null);
     setSelectedBrokerCode(null);
     setIsRevealed(false);
+    setFormValues({
+      brokerName: "",
+      brokerCode: "",
+      companyName: "",
+      licenseNumber: "",
+      registrationNumber: "",
+      contactPersonName: "",
+      contactEmail: "",
+      contactPhone: "",
+      supportedInsuranceTypes: [],
+      activeRegions: "",
+      partnerProviderCodes: "",
+      notes: "",
+    });
+  };
+
+  const parseCsvInput = (value: string) =>
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const toggleInsuranceType = (insuranceType: string) => {
+    setFormValues((current) => ({
+      ...current,
+      supportedInsuranceTypes: current.supportedInsuranceTypes.includes(insuranceType)
+        ? current.supportedInsuranceTypes.filter((item) => item !== insuranceType)
+        : [...current.supportedInsuranceTypes, insuranceType],
+    }));
   };
 
   const handleCopy = () => {
@@ -78,8 +118,16 @@ export function BrokerManagementScreen() {
       const broker = await adminApi.createBroker({
         broker_name: formValues.brokerName,
         broker_code: formValues.brokerCode.toUpperCase(),
-        callback_url: formValues.callbackUrl,
-        webhook_url: formValues.webhookUrl,
+        company_name: formValues.companyName || undefined,
+        license_number: formValues.licenseNumber || undefined,
+        registration_number: formValues.registrationNumber || undefined,
+        contact_person_name: formValues.contactPersonName || undefined,
+        contact_email: formValues.contactEmail || undefined,
+        contact_phone: formValues.contactPhone || undefined,
+        supported_insurance_types: formValues.supportedInsuranceTypes,
+        active_regions: parseCsvInput(formValues.activeRegions),
+        partner_provider_codes: parseCsvInput(formValues.partnerProviderCodes),
+        notes: formValues.notes || undefined,
       });
       setBrokers((current) => [broker, ...current]);
       setTransientApiKey(broker.api_key ?? "brk_live_****************");
@@ -156,6 +204,8 @@ export function BrokerManagementScreen() {
                 <tr>
                   <th>Broker Code</th>
                   <th>Name</th>
+                  <th>Insurance Types</th>
+                  <th>Contact</th>
                   <th>Status</th>
                   <th>Created</th>
                   <th>Last Key Rotation</th>
@@ -166,14 +216,34 @@ export function BrokerManagementScreen() {
                 {brokers.map((broker) => (
                   <tr key={broker.broker_code}>
                     <td className="if-mono">{broker.broker_code}</td>
-                    <td>{broker.broker_name}</td>
+                    <td>
+                      <div>{broker.broker_name}</div>
+                      {broker.company_name ? (
+                        <div className="if-inline-subtitle">{broker.company_name}</div>
+                      ) : null}
+                    </td>
+                    <td>
+                      {broker.supported_insurance_types.length > 0
+                        ? broker.supported_insurance_types.join(", ")
+                        : "Not specified"}
+                    </td>
+                    <td>
+                      <div>{broker.contact_person_name || "No contact set"}</div>
+                      <div className="if-inline-subtitle">
+                        {broker.contact_email || broker.contact_phone || "No contact details"}
+                      </div>
+                    </td>
                     <td>
                       <StatusBadge status={broker.status === "ACTIVE" ? "issued" : "cancelled"}>
                         {broker.status}
                       </StatusBadge>
                     </td>
                     <td>{broker.created_at ? new Date(broker.created_at).toLocaleDateString("en-IN") : "N/A"}</td>
-                    <td>{broker.updated_at ? new Date(broker.updated_at).toLocaleDateString("en-IN") : "N/A"}</td>
+                    <td>
+                      {broker.last_key_rotated_at
+                        ? new Date(broker.last_key_rotated_at).toLocaleDateString("en-IN")
+                        : "Not rotated"}
+                    </td>
                     <td>
                       <div className="if-table-action-row">
                         <Button
@@ -224,16 +294,86 @@ export function BrokerManagementScreen() {
               value={formValues.brokerCode}
             />
             <TextInput
-              label="Callback URL"
-              onChange={(event) => setFormValues((current) => ({ ...current, callbackUrl: event.target.value }))}
-              placeholder="https://broker.example.com/callback"
-              value={formValues.callbackUrl}
+              label="Company Name"
+              onChange={(event) => setFormValues((current) => ({ ...current, companyName: event.target.value }))}
+              placeholder="Demo Broker Pvt Ltd"
+              value={formValues.companyName}
             />
             <TextInput
-              label="Webhook URL"
-              onChange={(event) => setFormValues((current) => ({ ...current, webhookUrl: event.target.value }))}
-              placeholder="https://broker.example.com/webhook"
-              value={formValues.webhookUrl}
+              label="Contact Person"
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, contactPersonName: event.target.value }))
+              }
+              placeholder="Priya Mehta"
+              value={formValues.contactPersonName}
+            />
+            <TextInput
+              label="Contact Email"
+              onChange={(event) => setFormValues((current) => ({ ...current, contactEmail: event.target.value }))}
+              placeholder="partnerships@broker.in"
+              type="email"
+              value={formValues.contactEmail}
+            />
+            <TextInput
+              label="Contact Phone"
+              onChange={(event) => setFormValues((current) => ({ ...current, contactPhone: event.target.value }))}
+              placeholder="9876543210"
+              value={formValues.contactPhone}
+            />
+            <TextInput
+              label="Active Regions"
+              helperText="Comma-separated, for example PAN_INDIA or MAHARASHTRA, KARNATAKA"
+              onChange={(event) => setFormValues((current) => ({ ...current, activeRegions: event.target.value }))}
+              placeholder="PAN_INDIA"
+              value={formValues.activeRegions}
+            />
+            <div className="if-field">
+              <span className="if-group-label">Insurance Types</span>
+              <div className="if-pill-group">
+                {INSURANCE_TYPE_OPTIONS.map((insuranceType) => (
+                  <button
+                    key={insuranceType}
+                    className={`if-pill ${formValues.supportedInsuranceTypes.includes(insuranceType) ? "is-active" : ""}`}
+                    onClick={() => toggleInsuranceType(insuranceType)}
+                    type="button"
+                  >
+                    {insuranceType}
+                  </button>
+                ))}
+              </div>
+              <span className="if-helper-text">
+                Select all insurance types this broker can distribute.
+              </span>
+            </div>
+            <TextInput
+              label="Partner Provider Codes"
+              helperText="Optional comma-separated provider codes"
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, partnerProviderCodes: event.target.value }))
+              }
+              placeholder="DEMO_PROVIDER, HDFC_ERGO"
+              value={formValues.partnerProviderCodes}
+            />
+            <TextInput
+              label="License Number"
+              onChange={(event) => setFormValues((current) => ({ ...current, licenseNumber: event.target.value }))}
+              placeholder="IRDAI-BRK-2026-001"
+              value={formValues.licenseNumber}
+            />
+            <TextInput
+              label="Registration Number"
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, registrationNumber: event.target.value }))
+              }
+              placeholder="REG-2026-BROKER-001"
+              value={formValues.registrationNumber}
+            />
+            <TextareaField
+              label="Notes"
+              onChange={(event) => setFormValues((current) => ({ ...current, notes: event.target.value }))}
+              placeholder="Optional internal note about this broker."
+              rows={4}
+              value={formValues.notes}
             />
           </div>
           <div className="if-modal-footer">

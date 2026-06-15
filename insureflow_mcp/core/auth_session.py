@@ -1,4 +1,4 @@
-"""Process-local authentication state for login-driven MCP workflows."""
+"""Process-local authentication state for login-driven shared workflows."""
 
 from __future__ import annotations
 
@@ -11,20 +11,20 @@ from insureflow_mcp.core.errors import AuthenticationRequiredError
 class AuthSessionStore:
     """Keep the latest customer and admin bearer tokens in server memory.
 
-    The MCP server uses this state after successful login tools so later
-    authenticated tools can call the backend without static JWT env vars.
+    This shared helper is reused by integrations like the voice bot, even
+    though the public MCP server no longer exposes login tools directly.
     """
 
     customer_token: str | None = None
     admin_token: str | None = None
 
     def set_customer_token(self, token: str) -> None:
-        """Persist the latest customer bearer token for this server process."""
+        """Persist the latest customer bearer token for this process."""
 
         self.customer_token = token
 
     def set_admin_token(self, token: str) -> None:
-        """Persist the latest admin bearer token for this server process."""
+        """Persist the latest admin bearer token for this process."""
 
         self.admin_token = token
 

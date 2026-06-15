@@ -1,4 +1,4 @@
-"""MCP support ticket tools implemented as thin adapters over InsureFlow APIs."""
+"""Shared ticket tool adapters used outside the public MCP tool list."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from insureflow_mcp.schemas.tickets import CreateTicketInput, TicketOutput
 
 
 class TicketTools:
-    """Support-ticket orchestration helpers used by the MCP server."""
+    """Thin ticket adapters reused by integrations like the voice bot."""
 
     def __init__(self, *, auth_session: AuthSessionStore, main_client: MainBackendClient) -> None:
         self.auth_session = auth_session
@@ -37,34 +37,27 @@ class TicketTools:
 
     @staticmethod
     def _ticket_payload(data: dict[str, Any]) -> dict[str, Any]:
-        """Normalize a ticket response payload into the MCP ticket schema."""
+        """Normalize a ticket response payload into the shared ticket schema."""
 
         return {
             "ticket_reference": str(data.get("ticket_reference")),
-            "transaction_reference": (
-                str(data["transaction_reference"]) if data.get("transaction_reference") is not None else None
-            ),
+            "transaction_reference": str(data["transaction_reference"]) if data.get("transaction_reference") is not None else None,
             "category": str(data.get("category", "GENERAL")),
             "priority": str(data.get("priority", "MEDIUM")),
             "status": str(data.get("status", "UNKNOWN")),
             "subject": str(data.get("subject", "")),
             "message": str(data.get("message", "")),
-            "admin_response": (
-                str(data["admin_response"]) if data.get("admin_response") is not None else None
-            ),
+            "admin_response": str(data["admin_response"]) if data.get("admin_response") is not None else None,
             "created_at": str(data.get("created_at")),
             "updated_at": str(data.get("updated_at")),
         }
 
 
 def register_ticket_tools(mcp_server: Any, tools: TicketTools) -> None:
-    """Register ticket tool handlers on the running MCP server."""
+    """Register ticket helpers on an MCP server when an integration needs them."""
 
-    @mcp_server.tool(
-        name="create_ticket",
-        description="Create a customer support ticket using the authenticated customer token.",
-    )
+    @mcp_server.tool(name="create_ticket", description="Create a customer support ticket.")
     async def create_ticket(payload: CreateTicketInput) -> dict[str, Any]:
-        """Create a support ticket for Claude-driven workflows."""
+        """Create a support ticket for the caller."""
 
         return (await tools.create_ticket(payload)).model_dump(mode="json")

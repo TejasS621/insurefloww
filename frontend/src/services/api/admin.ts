@@ -12,13 +12,37 @@ export interface AdminTokenPayload {
 export interface BrokerSummary {
   broker_code: string;
   broker_name: string;
-  callback_url: string;
-  webhook_url: string;
+  company_name?: string | null;
+  license_number?: string | null;
+  registration_number?: string | null;
+  contact_person_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  supported_insurance_types: string[];
+  active_regions: string[];
+  partner_provider_codes?: string[];
+  notes?: string | null;
   status: string;
   created_by_admin?: string | null;
+  last_key_rotated_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
   api_key?: string | null;
+}
+
+export interface ProviderSummary {
+  provider_code: string;
+  provider_name: string;
+  company_name?: string | null;
+  contact_email: string;
+  contact_phone: string;
+  supported_insurance_types: string[];
+  supported_regions: string[];
+  serviceable_products: string[];
+  notes?: string | null;
+  status: string;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface AdminPaginatedResponse<T> {
@@ -101,11 +125,24 @@ export const adminApi = {
       admin: true,
     });
   },
+  listProviders() {
+    return apiRequest<ProviderSummary[]>("/admin/providers", {
+      admin: true,
+    });
+  },
   createBroker(payload: {
     broker_name: string;
     broker_code: string;
-    callback_url: string;
-    webhook_url: string;
+    company_name?: string;
+    license_number?: string;
+    registration_number?: string;
+    contact_person_name?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    supported_insurance_types: string[];
+    active_regions: string[];
+    partner_provider_codes: string[];
+    notes?: string;
   }) {
     return apiRequest<BrokerSummary>("/admin/brokers", {
       admin: true,
@@ -113,8 +150,32 @@ export const adminApi = {
       body: payload,
     });
   },
+  createProvider(payload: {
+    provider_name: string;
+    provider_code: string;
+    company_name?: string;
+    contact_email: string;
+    contact_phone: string;
+    supported_insurance_types: string[];
+    supported_regions: string[];
+    serviceable_products: string[];
+    notes?: string;
+  }) {
+    return apiRequest<ProviderSummary>("/admin/providers", {
+      admin: true,
+      method: "POST",
+      body: payload,
+    });
+  },
   updateBrokerStatus(brokerCode: string, status: "ACTIVE" | "INACTIVE") {
     return apiRequest<BrokerSummary>(`/admin/brokers/${brokerCode}/status`, {
+      admin: true,
+      method: "PATCH",
+      body: { status },
+    });
+  },
+  updateProviderStatus(providerCode: string, status: "ACTIVE" | "INACTIVE") {
+    return apiRequest<ProviderSummary>(`/admin/providers/${providerCode}/status`, {
       admin: true,
       method: "PATCH",
       body: { status },

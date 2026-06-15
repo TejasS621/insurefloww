@@ -10,7 +10,7 @@ try:
 except ImportError as exc:  # pragma: no cover - import guard for runtime setup only
     raise RuntimeError(
         "The fastmcp package is required to run the InsureFlow MCP server. "
-        "Install the dependencies from mcp/requirements.txt first."
+        "Install the dependencies from insureflow_mcp/requirements.txt first."
     ) from exc
 
 

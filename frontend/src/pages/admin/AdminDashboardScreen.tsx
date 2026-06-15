@@ -1,4 +1,4 @@
-import { ArrowRight, CircleDot, ClipboardList, ListOrdered, Shield, UserRound } from "lucide-react";
+import { ArrowRight, Blocks, CircleDot, ClipboardList, ListOrdered, Shield, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ErrorCard } from "../../components/ui/ErrorCard";
@@ -10,7 +10,7 @@ import { normalizeApiError } from "../../utils/apiErrors";
 import { formatCurrencyINR } from "../../utils/formatters";
 
 interface AdminDashboardScreenProps {
-  onNavigate: (screen: "dashboard" | "brokers" | "transactions" | "policies" | "payments" | "tickets") => void;
+  onNavigate: (screen: "dashboard" | "brokers" | "providers" | "transactions" | "policies" | "payments" | "tickets") => void;
 }
 
 /**
@@ -68,6 +68,7 @@ export function AdminDashboardScreen({ onNavigate }: AdminDashboardScreenProps) 
   const quickLinks = useMemo(
     () => [
       { label: "Manage Brokers", icon: Shield, screen: "brokers" as const },
+      { label: "Manage Providers", icon: Blocks, screen: "providers" as const },
       { label: "View Tickets", icon: ClipboardList, screen: "tickets" as const },
       { label: "Audit Logs", icon: ListOrdered, screen: "transactions" as const },
       { label: "Manage Customers", icon: UserRound, screen: "dashboard" as const },

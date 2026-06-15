@@ -1,4 +1,4 @@
-"""Request and response schemas for broker tools."""
+"""Request and response schemas shared by broker-related integrations."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class BrokerSummaryOutput(BaseModel):
-    """Broker summary returned to the MCP client."""
+    """Broker summary returned to shared clients."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -18,7 +18,7 @@ class BrokerSummaryOutput(BaseModel):
 
 
 class RegisterBrokerInput(BaseModel):
-    """Input accepted by the broker-registration tool."""
+    """Input accepted by broker-registration helpers."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -29,7 +29,7 @@ class RegisterBrokerInput(BaseModel):
 
 
 class RegisterBrokerOutput(BaseModel):
-    """Broker registration result returned to the MCP client."""
+    """Broker registration result returned to shared clients."""
 
     model_config = ConfigDict(extra="forbid")
 

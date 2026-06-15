@@ -10,6 +10,7 @@ from backend.main_backend.app.core.apis.routes._mappers import (
     to_admin_broker_response,
     to_admin_payment_response,
     to_admin_policy_response,
+    to_admin_provider_response,
     to_admin_ticket_response,
     to_admin_transaction_detail_response,
     to_admin_transaction_response,
@@ -27,6 +28,8 @@ from backend.main_backend.app.core.apis.schemas.requests.admin_request import (
     BrokerRegistrationRequest,
     BrokerStatusUpdateRequest,
     PolicyStatusUpdateRequest,
+    ProviderRegistrationRequest,
+    ProviderStatusUpdateRequest,
     TicketAssignmentRequest,
     TicketStatusUpdateRequest,
     UnderwritingReviewRequest,
@@ -35,6 +38,7 @@ from backend.main_backend.app.core.apis.schemas.responses.admin_response import 
     AdminApplicationResponse,
     AdminPaymentResponse,
     AdminPolicyResponse,
+    ProviderRegistryResponse,
     AdminTicketResponse,
     AdminTransactionDetailResponse,
     AdminTransactionResponse,
@@ -69,8 +73,16 @@ async def register_broker(
         ProviderBrokerRegistrationRequest(
             broker_name=request_data.broker_name,
             broker_code=request_data.broker_code,
-            callback_url=request_data.callback_url,
-            webhook_url=request_data.webhook_url,
+            company_name=request_data.company_name,
+            license_number=request_data.license_number,
+            registration_number=request_data.registration_number,
+            contact_person_name=request_data.contact_person_name,
+            contact_email=request_data.contact_email,
+            contact_phone=request_data.contact_phone,
+            supported_insurance_types=request_data.supported_insurance_types,
+            active_regions=request_data.active_regions,
+            partner_provider_codes=request_data.partner_provider_codes,
+            notes=request_data.notes,
             created_by_admin=actor_id,
         ),
     )
@@ -90,6 +102,57 @@ async def list_brokers(
     return APIResponse(
         message="Brokers fetched successfully.",
         data=[to_admin_broker_response(broker) for broker in brokers],
+    )
+
+
+@admin_router.post("/providers", response_model=APIResponse[ProviderRegistryResponse], status_code=status.HTTP_201_CREATED)
+async def register_provider(
+    request_data: ProviderRegistrationRequest,
+    engine: AIOEngine = Depends(get_database),
+    actor_id: str = Depends(get_current_admin_actor),
+) -> APIResponse[ProviderRegistryResponse]:
+    """Register a provider through the admin orchestration API."""
+    provider = await admin_workflow_service.register_provider(
+        engine,
+        request_data=request_data,
+        actor_id=actor_id,
+    )
+    return APIResponse(
+        message="Provider registered successfully.",
+        data=to_admin_provider_response(provider),
+    )
+
+
+@admin_router.get("/providers", response_model=APIResponse[list[ProviderRegistryResponse]])
+async def list_providers(
+    engine: AIOEngine = Depends(get_database),
+    _: str = Depends(get_current_admin_actor),
+) -> APIResponse[list[ProviderRegistryResponse]]:
+    """List registered providers."""
+    providers = await admin_workflow_service.list_providers(engine)
+    return APIResponse(
+        message="Providers fetched successfully.",
+        data=[to_admin_provider_response(provider) for provider in providers],
+    )
+
+
+@admin_router.patch("/providers/{provider_code}/status", response_model=APIResponse[ProviderRegistryResponse])
+async def update_provider_status(
+    provider_code: str,
+    request_data: ProviderStatusUpdateRequest,
+    engine: AIOEngine = Depends(get_database),
+    actor_id: str = Depends(get_current_admin_actor),
+) -> APIResponse[ProviderRegistryResponse]:
+    """Update the lifecycle status of a provider."""
+    provider = await admin_workflow_service.update_provider_status(
+        engine,
+        provider_code=provider_code,
+        request_data=request_data,
+        actor_id=actor_id,
+    )
+    return APIResponse(
+        message="Provider status updated successfully.",
+        data=to_admin_provider_response(provider),
     )
 
 

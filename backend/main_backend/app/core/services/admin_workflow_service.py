@@ -13,6 +13,8 @@ from backend.main_backend.app.core.apis.schemas.requests.admin_request import (
     ApplicationReviewRequest,
     PolicyAdminStatus,
     PolicyStatusUpdateRequest,
+    ProviderRegistrationRequest,
+    ProviderStatusUpdateRequest,
     TicketAssignmentRequest,
     TicketStatusUpdateRequest,
     UnderwritingDecision,
@@ -40,12 +42,17 @@ from backend.provider_backend.app.core.models.policy_model import (
     Policy,
     PolicyStatus as ProviderPolicyStatus,
 )
+from backend.provider_backend.app.core.models.provider_model import (
+    Provider,
+    ProviderStatus,
+)
 from backend.provider_backend.app.core.models.provider_quote_model import (
     ProviderQuote,
     RiskCategory,
 )
+from backend.provider_backend.app.commons.config import settings as provider_settings
 
-from .service_exceptions import NotFoundServiceError
+from .service_exceptions import ConflictServiceError, NotFoundServiceError
 
 
 @dataclass(slots=True)
@@ -271,6 +278,87 @@ class AdminWorkflowService:
         """Return all issued policies ordered from newest to oldest."""
         policies = await engine.find(Policy)
         return sorted(policies, key=lambda item: item.updated_at, reverse=True)
+
+    async def list_providers(self, engine: AIOEngine) -> list[Provider]:
+        """Return all providers ordered from newest to oldest."""
+        await self._backfill_legacy_provider_documents(engine)
+        providers = await engine.find(Provider)
+        return sorted(providers, key=lambda item: item.updated_at, reverse=True)
+
+    async def register_provider(
+        self,
+        engine: AIOEngine,
+        *,
+        request_data: ProviderRegistrationRequest,
+        actor_id: str,
+    ) -> Provider:
+        """Register a provider record for admin operations and audit the action."""
+        await self._backfill_legacy_provider_documents(engine)
+        existing = await engine.find_one(
+            Provider,
+            Provider.provider_code == request_data.provider_code,
+        )
+        if existing is not None:
+            raise ConflictServiceError("A provider with the given code already exists.")
+
+        provider = Provider(
+            provider_code=request_data.provider_code,
+            provider_name=request_data.provider_name,
+            company_name=request_data.company_name,
+            contact_email=str(request_data.contact_email),
+            contact_phone=request_data.contact_phone,
+            supported_insurance_types=request_data.supported_insurance_types,
+            supported_regions=request_data.supported_regions,
+            serviceable_products=request_data.serviceable_products,
+            notes=request_data.notes,
+            webhook_url=provider_settings.default_provider_webhook_url,
+            status=ProviderStatus.ACTIVE,
+        )
+        await engine.save(provider)
+        await self._create_audit_log(
+            engine,
+            actor_id=actor_id,
+            action=AuditAction.CREATE,
+            entity_type="provider",
+            entity_id=provider.provider_code,
+            transaction_reference=None,
+            old_state=None,
+            new_state=self._serialize_provider(provider),
+        )
+        return provider
+
+    async def update_provider_status(
+        self,
+        engine: AIOEngine,
+        *,
+        provider_code: str,
+        request_data: ProviderStatusUpdateRequest,
+        actor_id: str,
+    ) -> Provider:
+        """Update a provider lifecycle state and persist an audit log."""
+        await self._backfill_legacy_provider_documents(engine)
+        provider = await engine.find_one(Provider, Provider.provider_code == provider_code)
+        if provider is None:
+            raise NotFoundServiceError("The requested provider could not be found.")
+
+        old_state = self._serialize_provider(provider)
+        provider.status = ProviderStatus(request_data.status.value)
+        provider.updated_at = datetime.now(timezone.utc)
+        await engine.save(provider)
+        await self._create_audit_log(
+            engine,
+            actor_id=actor_id,
+            action=AuditAction.STATUS_CHANGE,
+            entity_type="provider",
+            entity_id=provider.provider_code,
+            transaction_reference=None,
+            old_state=old_state,
+            new_state={
+                **self._serialize_provider(provider),
+                "reason": request_data.reason,
+            },
+        )
+        return provider
 
     async def list_transactions(self, engine: AIOEngine) -> list[Transaction]:
         """Return all transactions ordered from newest to oldest."""
@@ -566,6 +654,42 @@ class AdminWorkflowService:
             "policy_status": policy.policy_status.value,
             "document_url": policy.policy_document_url,
         }
+
+    @staticmethod
+    def _serialize_provider(provider: Provider) -> dict[str, object]:
+        """Serialize a provider into a small audit-friendly state snapshot."""
+        return {
+            "provider_name": provider.provider_name,
+            "status": provider.status.value,
+            "supported_insurance_types": provider.supported_insurance_types,
+            "supported_regions": provider.supported_regions,
+            "serviceable_products": provider.serviceable_products,
+        }
+
+    @staticmethod
+    async def _backfill_legacy_provider_documents(engine: AIOEngine) -> None:
+        """Populate newly-added provider fields on older MongoDB documents."""
+        collection = engine.get_collection(Provider)
+        await collection.update_many(
+            {"company_name": {"$exists": False}},
+            {"$set": {"company_name": None}},
+        )
+        await collection.update_many(
+            {"supported_insurance_types": {"$exists": False}},
+            {"$set": {"supported_insurance_types": []}},
+        )
+        await collection.update_many(
+            {"supported_regions": {"$exists": False}},
+            {"$set": {"supported_regions": []}},
+        )
+        await collection.update_many(
+            {"serviceable_products": {"$exists": False}},
+            {"$set": {"serviceable_products": []}},
+        )
+        await collection.update_many(
+            {"notes": {"$exists": False}},
+            {"$set": {"notes": None}},
+        )
 
 
 admin_workflow_service = AdminWorkflowService()

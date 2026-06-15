@@ -1,5 +1,6 @@
 import {
   Bell,
+  Building2,
   Blocks,
   ClipboardList,
   CreditCard,
@@ -23,6 +24,7 @@ import { AdminLoginScreen } from "./pages/admin/AdminLoginScreen";
 import { AdminRecordsScreen } from "./pages/admin/AdminRecordsScreen";
 import { AdminTicketsScreen } from "./pages/admin/AdminTicketsScreen";
 import { BrokerManagementScreen } from "./pages/admin/BrokerManagementScreen";
+import { ProviderManagementScreen } from "./pages/admin/ProviderManagementScreen";
 import { ApplicationFlowScreen } from "./pages/application/ApplicationFlowScreen";
 import { CustomerLoginScreen } from "./pages/auth/CustomerLoginScreen";
 import { CustomerDashboardScreen } from "./pages/dashboard/CustomerDashboardScreen";
@@ -51,7 +53,7 @@ import { openPaymentCheckout } from "./utils/payment";
 
 type PortalMode = "customer" | "admin";
 type CustomerScreen = "landing" | "login" | "application" | "quotes" | "payment" | "dashboard" | "support";
-type AdminScreen = "dashboard" | "brokers" | "transactions" | "policies" | "payments" | "tickets";
+type AdminScreen = "dashboard" | "brokers" | "providers" | "transactions" | "policies" | "payments" | "tickets";
 type InsuranceType = "HEALTH" | "LIFE" | "VEHICLE" | "TRAVEL" | "HOME";
 type CustomerLoginTarget = "application" | "dashboard" | "support";
 
@@ -294,6 +296,7 @@ export default function App() {
     () => [
       { label: "Dashboard", icon: LayoutDashboard, active: adminScreen === "dashboard", onClick: () => navigateAdminScreen("dashboard") },
       { label: "Brokers", icon: Blocks, active: adminScreen === "brokers", onClick: () => navigateAdminScreen("brokers") },
+      { label: "Providers", icon: Building2, active: adminScreen === "providers", onClick: () => navigateAdminScreen("providers") },
       { label: "Transactions", icon: ListOrdered, active: adminScreen === "transactions", onClick: () => navigateAdminScreen("transactions") },
       { label: "Policies", icon: FileStack, active: adminScreen === "policies", onClick: () => navigateAdminScreen("policies") },
       { label: "Payments", icon: CreditCard, active: adminScreen === "payments", onClick: () => navigateAdminScreen("payments") },
@@ -649,6 +652,7 @@ export default function App() {
           <AdminDashboardScreen onNavigate={(screen) => navigateAdminScreen(screen)} />
         ) : null}
         {adminScreen === "brokers" ? <BrokerManagementScreen /> : null}
+        {adminScreen === "providers" ? <ProviderManagementScreen /> : null}
         {adminScreen === "transactions" ? <AdminRecordsScreen view="transactions" /> : null}
         {adminScreen === "policies" ? <AdminRecordsScreen view="policies" /> : null}
         {adminScreen === "payments" ? <AdminRecordsScreen view="payments" /> : null}

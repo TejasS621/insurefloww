@@ -1,4 +1,4 @@
-"""Request and response schemas for support ticket tools."""
+"""Request and response schemas for shared support ticket helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class CreateTicketInput(BaseModel):
-    """Input accepted by the ticket-creation tool."""
+    """Input accepted by the ticket-creation helper."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -18,7 +18,7 @@ class CreateTicketInput(BaseModel):
 
 
 class TicketOutput(BaseModel):
-    """Ticket payload returned to the MCP client."""
+    """Ticket payload returned to shared clients."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -32,4 +32,3 @@ class TicketOutput(BaseModel):
     admin_response: str | None = None
     created_at: str
     updated_at: str
-

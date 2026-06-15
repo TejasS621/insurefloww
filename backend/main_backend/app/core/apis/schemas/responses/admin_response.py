@@ -14,12 +14,39 @@ class BrokerRegistryResponse(BaseModel):
 
     broker_code: str
     broker_name: str
-    callback_url: str
-    webhook_url: str
+    company_name: str | None = None
+    license_number: str | None = None
+    registration_number: str | None = None
+    contact_person_name: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    supported_insurance_types: list[str] = Field(default_factory=list)
+    active_regions: list[str] = Field(default_factory=list)
+    partner_provider_codes: list[str] = Field(default_factory=list)
+    notes: str | None = None
     status: str
     created_by_admin: str | None = None
     api_key: str | None = None
     last_key_rotated_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class ProviderRegistryResponse(BaseModel):
+    """Provider registry payload returned by admin provider APIs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider_code: str
+    provider_name: str
+    company_name: str | None = None
+    contact_email: str
+    contact_phone: str
+    supported_insurance_types: list[str] = Field(default_factory=list)
+    supported_regions: list[str] = Field(default_factory=list)
+    serviceable_products: list[str] = Field(default_factory=list)
+    notes: str | None = None
+    status: str
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

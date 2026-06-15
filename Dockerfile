@@ -8,12 +8,11 @@ ENV MCP_PORT=8080
 
 WORKDIR /app
 
-COPY mcp/requirements.txt /app/mcp/requirements.txt
+COPY insureflow_mcp/requirements.txt /app/insureflow_mcp/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r /app/mcp/requirements.txt
+    pip install --no-cache-dir -r /app/insureflow_mcp/requirements.txt
 
 COPY insureflow_mcp /app/insureflow_mcp
-COPY mcp /app/mcp
 COPY mcp_server.py /app/mcp_server.py
 COPY mcp_remote_server.py /app/mcp_remote_server.py
 
