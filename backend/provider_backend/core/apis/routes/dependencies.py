@@ -9,18 +9,18 @@ from fastapi import Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from odmantic import AIOEngine
 
+from backend.provider_backend.commons.auth import (
+    ExpiredSignatureError,
+    JWTClaims,
+    JWTError,
+    decode_access_token,
+)
 from backend.provider_backend.commons.config import settings
 from backend.provider_backend.core.database.database import get_database
 from backend.provider_backend.core.models.broker_registry_model import BrokerRegistry
 from backend.provider_backend.core.services.service_exceptions import (
     AuthenticationServiceError,
     AuthorizationServiceError,
-)
-from backend.shared.auth.jwt_utils import (
-    ExpiredSignatureError,
-    JWTError,
-    JWTClaims,
-    decode_access_token,
 )
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -61,8 +61,6 @@ async def get_current_provider_admin_principal(
     try:
         claims: JWTClaims = decode_access_token(
             token=credentials.credentials,
-            secret_key=settings.jwt_secret_key,
-            algorithm=settings.jwt_algorithm,
         )
     except ExpiredSignatureError as exc:
         raise AuthenticationServiceError("The access token has expired.") from exc

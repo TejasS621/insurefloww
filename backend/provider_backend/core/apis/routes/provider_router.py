@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 from odmantic import AIOEngine
 
+from backend.provider_backend.core.apis.routes._helpers import route_guard
 from backend.provider_backend.core.apis.routes._mappers import to_broker_response
 from backend.provider_backend.core.apis.routes.dependencies import get_current_provider_admin_principal
 from backend.provider_backend.core.apis.schemas.requests.provider_request import (
@@ -20,10 +21,11 @@ from backend.provider_backend.core.apis.schemas.responses.provider_response impo
 from backend.provider_backend.core.database.database import get_database
 from backend.provider_backend.core.services.broker_service import broker_service
 
-provider_router = APIRouter(prefix="/api/v1/provider/brokers", tags=["Brokers"])
+provider_router = APIRouter(prefix="/api/v1/brokers", tags=["Brokers"])
 
 
 @provider_router.post("/register", response_model=APIResponse[BrokerCredentialResponse], status_code=status.HTTP_201_CREATED)
+@route_guard
 async def register_broker(
     request_data: BrokerRegistrationRequest,
     engine: AIOEngine = Depends(get_database),
@@ -42,6 +44,7 @@ async def register_broker(
 
 
 @provider_router.get("", response_model=APIResponse[list[BrokerRegistryResponse]])
+@route_guard
 async def list_brokers(
     engine: AIOEngine = Depends(get_database),
     _: object = Depends(get_current_provider_admin_principal),
@@ -55,6 +58,7 @@ async def list_brokers(
 
 
 @provider_router.patch("/{broker_code}/status", response_model=APIResponse[BrokerRegistryResponse])
+@route_guard
 async def update_broker_status(
     broker_code: str,
     request_data: BrokerStatusUpdateRequest,
@@ -74,6 +78,7 @@ async def update_broker_status(
 
 
 @provider_router.put("/{broker_code}/rotate-key", response_model=APIResponse[BrokerCredentialResponse])
+@route_guard
 async def rotate_broker_key(
     broker_code: str,
     request_data: KeyRotationRequest,

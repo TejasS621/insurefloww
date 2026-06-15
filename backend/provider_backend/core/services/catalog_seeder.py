@@ -10,14 +10,13 @@ from datetime import datetime, timezone
 
 from odmantic import AIOEngine
 
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.models.addon_model import AddOn, AddOnStatus
 from backend.provider_backend.core.models.insurance_plan_model import InsurancePlan, InsurancePlanStatus
 from backend.provider_backend.core.models.provider_model import Provider, ProviderStatus
 from backend.provider_backend.core.models.shared import InsuranceType
 
-import logging
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 PROVIDERS = [
     {
@@ -30,7 +29,7 @@ PROVIDERS = [
         "supported_regions": ["PAN_INDIA"],
         "serviceable_products": ["Retail Policies", "Family Floaters"],
         "notes": "Default seeded provider used for local demo flows.",
-        "webhook_url": "http://127.0.0.1:8001/api/v1/provider/webhook",
+        "webhook_url": "http://127.0.0.1:8001/api/v1/webhooks/payment-success",
         "status": ProviderStatus.ACTIVE,
     },
     {
@@ -42,7 +41,7 @@ PROVIDERS = [
         "supported_insurance_types": ["HEALTH"],
         "supported_regions": ["PAN_INDIA"],
         "serviceable_products": ["Retail Health", "Family Health"],
-        "webhook_url": "http://127.0.0.1:8001/api/v1/provider/webhook",
+        "webhook_url": "http://127.0.0.1:8001/api/v1/webhooks/payment-success",
         "status": ProviderStatus.ACTIVE,
     },
     {
@@ -54,7 +53,7 @@ PROVIDERS = [
         "supported_insurance_types": ["HEALTH"],
         "supported_regions": ["PAN_INDIA"],
         "serviceable_products": ["Individual Health", "Senior Citizen Health"],
-        "webhook_url": "http://127.0.0.1:8001/api/v1/provider/webhook",
+        "webhook_url": "http://127.0.0.1:8001/api/v1/webhooks/payment-success",
         "status": ProviderStatus.ACTIVE,
     },
     {
@@ -66,7 +65,7 @@ PROVIDERS = [
         "supported_insurance_types": ["LIFE"],
         "supported_regions": ["PAN_INDIA"],
         "serviceable_products": ["Term Life", "Savings Plans"],
-        "webhook_url": "http://127.0.0.1:8001/api/v1/provider/webhook",
+        "webhook_url": "http://127.0.0.1:8001/api/v1/webhooks/payment-success",
         "status": ProviderStatus.ACTIVE,
     },
 ]

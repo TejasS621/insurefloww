@@ -1,4 +1,4 @@
-# InsureFlow Implementation Plan
+﻿# InsureFlow Implementation Plan
 
 This plan is for restarting InsureFlow in a new folder with the updated architecture.
 
@@ -104,10 +104,10 @@ PUT /api/v1/admin/brokers/{broker_code}/rotate-key
 Provider Backend APIs:
 
 ```txt
-POST /api/v1/provider/brokers/register
-GET /api/v1/provider/brokers
-PATCH /api/v1/provider/brokers/{broker_code}/status
-PUT /api/v1/provider/brokers/{broker_code}/rotate-key
+POST /api/v1/brokers/register
+GET /api/v1/brokers
+PATCH /api/v1/brokers/{broker_code}/status
+PUT /api/v1/brokers/{broker_code}/rotate-key
 ```
 
 Broker registration request:
@@ -203,7 +203,7 @@ Quote generation is owned by Provider Backend.
 Main Backend calls:
 
 ```txt
-POST /api/v1/provider/quotes/generate
+POST /api/v1/quotes/generate
 ```
 
 Provider Backend should:
@@ -281,7 +281,7 @@ Frontend opens Razorpay checkout.
 Payment success callback goes to Provider Backend:
 
 ```txt
-POST /api/v1/provider/webhooks/payment-success
+POST /api/v1/webhooks/payment-success
 ```
 
 Provider Backend:

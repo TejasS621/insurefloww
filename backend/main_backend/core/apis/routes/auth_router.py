@@ -1,16 +1,30 @@
-﻿"""Authentication routes for the main backend."""
+"""
+Handle authentication routes for the main backend.
+
+Args:
+    None: This module defines customer and admin authentication handlers
+    exposed under the versioned auth router.
+
+Returns:
+    None: Route handlers return structured API responses containing OTP
+    dispatch metadata or signed JWT payloads.
+
+Raises:
+    HTTPException: Route handlers re-raise handled controller errors and
+    normalize unexpected failures through the shared route guard.
+"""
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, status
-
-logger = logging.getLogger(__name__)
 from odmantic import AIOEngine
 
+from backend.main_backend.commons.auth import create_access_token
 from backend.main_backend.commons.config import settings
+from backend.main_backend.commons.logger import get_logger
+from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.schemas.requests.auth_request import (
     AdminLoginRequest,
     AdminVerifyRequest,
@@ -27,24 +41,43 @@ from backend.main_backend.core.database.database import get_database
 from backend.main_backend.core.models.application_model import Application
 from backend.main_backend.core.models.user_model import OTPPurpose, User, UserRole
 from backend.main_backend.core.services.auth_service import auth_service
-from backend.shared.auth.jwt_utils import create_access_token
+
+logger = get_logger(__name__)
 
 auth_router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
 
-@auth_router.post("/login/otp", response_model=APIResponse[OTPDispatchResponse], status_code=status.HTTP_202_ACCEPTED)
+@auth_router.post(
+    "/login/otp",
+    response_model=APIResponse[OTPDispatchResponse],
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@route_guard
 async def request_customer_otp(
     request_data: OTPLoginRequest,
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[OTPDispatchResponse]:
-    """Start the customer OTP login flow and persist the OTP session."""
+    """
+    Start the customer OTP login flow and persist a new OTP session.
+
+    Args:
+        request_data: Validated login payload containing the mobile number.
+        engine: Active ODMantic database engine dependency.
+
+    Returns:
+        APIResponse[OTPDispatchResponse]: OTP dispatch metadata without
+        exposing the OTP in the API response.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses through the route guard.
+    """
     dispatch = await auth_service.request_customer_otp(
         engine,
         request_data.mobile_number,
         purpose=OTPPurpose.LOGIN,
     )
     expires_in = int((dispatch.expires_at - datetime.now(timezone.utc)).total_seconds())
-    # DEV: print OTP to console so developers can copy it without an SMS gateway
     logger.warning(
         "[DEV] OTP for %s: %s (expires in %ds)",
         dispatch.mobile_number,
@@ -61,11 +94,26 @@ async def request_customer_otp(
 
 
 @auth_router.post("/login/verify", response_model=APIResponse[AuthTokenResponse])
+@route_guard
 async def verify_customer_otp(
     request_data: OTPVerifyRequest,
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[AuthTokenResponse]:
-    """Verify the customer OTP and return a signed JWT access token."""
+    """
+    Verify a customer OTP and issue a signed JWT access token.
+
+    Args:
+        request_data: Validated OTP verification payload for the customer.
+        engine: Active ODMantic database engine dependency.
+
+    Returns:
+        APIResponse[AuthTokenResponse]: Authenticated customer identity and
+        access-token metadata for subsequent requests.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses through the route guard.
+    """
     token_record = await auth_service.verify_customer_otp(
         engine,
         request_data.mobile_number,
@@ -90,7 +138,9 @@ async def verify_customer_otp(
         mobile_number=token_record.mobile_number,
     )
     if linked_applications and user.full_name.startswith("Customer "):
-        latest_application = max(linked_applications, key=lambda application: application.updated_at)
+        latest_application = max(
+            linked_applications, key=lambda application: application.updated_at
+        )
         first_name = latest_application.personal_details.first_name.strip()
         last_name = latest_application.personal_details.last_name.strip()
         full_name = " ".join(part for part in [first_name, last_name] if part)
@@ -101,8 +151,6 @@ async def verify_customer_otp(
     access_token, expires_at = create_access_token(
         subject=str(user.id),
         role="customer",
-        secret_key=settings.jwt_secret_key,
-        algorithm=settings.jwt_algorithm,
         expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
     )
     expires_in = int((expires_at - datetime.now(timezone.utc)).total_seconds())
@@ -126,7 +174,21 @@ async def _link_customer_records_by_mobile(
     user: User,
     mobile_number: str,
 ) -> list[Application]:
-    """Attach guest applications for the verified mobile number to the logged-in user."""
+    """
+    Attach guest applications for a verified mobile number to a user record.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        user: Persisted user record to associate with prior guest applications.
+        mobile_number: Verified mobile number used to locate matching records.
+
+    Returns:
+        list[Application]: Matching applications found for the supplied mobile number.
+
+    Raises:
+        HTTPException: Any unexpected persistence error is allowed to bubble to
+        the route guard and global exception handlers.
+    """
     applications = await engine.find(Application)
     matched_applications: list[Application] = []
 
@@ -146,11 +208,25 @@ async def _link_customer_records_by_mobile(
 
 
 @auth_router.post("/admin/login", response_model=APIResponse[AuthTokenResponse])
+@route_guard
 async def request_admin_login(
     request_data: AdminLoginRequest,
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[AuthTokenResponse]:
-    """Validate admin credentials and return a signed JWT access token."""
+    """
+    Validate admin credentials, dispatch an OTP, and issue a JWT token.
+
+    Args:
+        request_data: Validated admin login payload containing email and password.
+        engine: Active ODMantic database engine dependency.
+
+    Returns:
+        APIResponse[AuthTokenResponse]: Admin identity and signed JWT metadata.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses through the route guard.
+    """
     admin_identity = await auth_service.authenticate_admin_credentials(
         email=str(request_data.email),
         password=request_data.password,
@@ -167,8 +243,6 @@ async def request_admin_login(
     access_token, expires_at = create_access_token(
         subject=admin_identity,
         role="admin",
-        secret_key=settings.jwt_secret_key,
-        algorithm=settings.jwt_algorithm,
         expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
     )
     expires_in = int((expires_at - datetime.now(timezone.utc)).total_seconds())
@@ -186,11 +260,25 @@ async def request_admin_login(
 
 
 @auth_router.post("/admin/login/verify", response_model=APIResponse[AuthTokenResponse])
+@route_guard
 async def verify_admin_login(
     request_data: AdminVerifyRequest,
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[AuthTokenResponse]:
-    """Verify the admin compatibility OTP flow and return a signed JWT token."""
+    """
+    Verify the admin OTP challenge and return a signed JWT token.
+
+    Args:
+        request_data: Validated admin OTP verification payload.
+        engine: Active ODMantic database engine dependency.
+
+    Returns:
+        APIResponse[AuthTokenResponse]: Admin identity and refreshed JWT data.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses through the route guard.
+    """
     admin_identity = await auth_service.verify_admin_otp(
         engine,
         email=str(request_data.email),
@@ -199,8 +287,6 @@ async def verify_admin_login(
     access_token, expires_at = create_access_token(
         subject=admin_identity,
         role="admin",
-        secret_key=settings.jwt_secret_key,
-        algorithm=settings.jwt_algorithm,
         expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
     )
     expires_in = int((expires_at - datetime.now(timezone.utc)).total_seconds())
@@ -215,4 +301,3 @@ async def verify_admin_login(
             ),
         ),
     )
-

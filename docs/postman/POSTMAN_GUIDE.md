@@ -1,4 +1,4 @@
-# InsureFlow Postman Collection Guide
+﻿# InsureFlow Postman Collection Guide
 
 ## Overview
 This is a comprehensive Postman collection for the InsureFlow project, including all API endpoints from both the Main Backend (port 8000) and Provider Backend (port 8001).
@@ -93,13 +93,13 @@ Before using the collection, set up the following variables in your Postman envi
 4. **Review Applications**: PATCH /api/v1/admin/applications/{application_reference}/review
 
 #### Provider Workflow
-1. **Provider Admin Login**: POST /api/v1/provider/auth/login
+1. **Provider Admin Login**: POST /api/v1/auth/login
    - Email: `provider-admin@insurefloww.com`
    - Password: `Provider@12345`
    - Copy token and save as `provider_admin_token`
-2. **Register Broker**: POST /api/v1/provider/brokers/register
-3. **Generate Quotes**: POST /api/v1/provider/quotes/generate
-4. **Create Payment Session**: POST /api/v1/provider/payments/create-session
+2. **Register Broker**: POST /api/v1/brokers/register
+3. **Generate Quotes**: POST /api/v1/quotes/generate
+4. **Create Payment Session**: POST /api/v1/payments/create-session
 
 ## Key Features
 

@@ -1,4 +1,4 @@
-# InsureFlow Architecture Documentation
+﻿# InsureFlow Architecture Documentation
 
 ## 1. Product Summary
 
@@ -611,8 +611,8 @@ GET /api/v1/policies/{policy_number}/download
 Main to Provider:
 
 ```txt
-POST /api/v1/provider/quotes/generate
-POST /api/v1/provider/payments/create-session
+POST /api/v1/quotes/generate
+POST /api/v1/payments/create-session
 POST /api/v1/provider-sync/webhook
 ```
 

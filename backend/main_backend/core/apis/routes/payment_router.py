@@ -1,4 +1,18 @@
-﻿"""Payment routes for the main backend."""
+"""
+Handle payment routes for the main backend.
+
+Args:
+    None: This module defines payment initiation, status lookup, and receipt
+    download endpoints for guest and authenticated customer flows.
+
+Returns:
+    None: Route handlers return structured payment responses or receipt files
+    under the `/api/v1/payments` router.
+
+Raises:
+    HTTPException: Route handlers re-raise handled controller errors and
+    normalize unexpected failures through the shared route guard.
+"""
 
 from __future__ import annotations
 
@@ -9,8 +23,14 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 from odmantic import AIOEngine
 
-from backend.main_backend.core.apis.routes._mappers import to_payment_initiation_response
-from backend.main_backend.core.apis.routes.dependencies import get_current_user_id, get_optional_user_id
+from backend.main_backend.core.apis.routes._helpers import route_guard
+from backend.main_backend.core.apis.routes._mappers import (
+    to_payment_initiation_response,
+)
+from backend.main_backend.core.apis.routes.dependencies import (
+    get_current_user_id,
+    get_optional_user_id,
+)
 from backend.main_backend.core.apis.schemas.requests.payment_request import (
     PaymentInitiationRequest,
 )
@@ -33,14 +53,34 @@ from backend.provider_backend.core.models.payment_model import Payment
 payment_router = APIRouter(prefix="/api/v1/payments", tags=["Payments"])
 
 
-@payment_router.post("/initiate/{transaction_reference}", response_model=APIResponse[PaymentInitiationResponse])
+@payment_router.post(
+    "/initiate/{transaction_reference}",
+    response_model=APIResponse[PaymentInitiationResponse],
+)
+@route_guard
 async def initiate_payment(
     transaction_reference: str,
     request_data: PaymentInitiationRequest | None = None,
     engine: AIOEngine = Depends(get_database),
     user_id: str | None = Depends(get_optional_user_id),
 ) -> APIResponse[PaymentInitiationResponse]:
-    """Create a provider-hosted mock payment session for a guest or authenticated customer."""
+    """
+    Create a provider-hosted mock payment session for a customer transaction.
+
+    Args:
+        transaction_reference: Main transaction reference selected for payment.
+        request_data: Optional payload containing the preferred payment method.
+        engine: Active ODMantic database engine dependency.
+        user_id: Optional authenticated customer identifier for ownership checks.
+
+    Returns:
+        APIResponse[PaymentInitiationResponse]: Hosted payment session details
+        returned by the provider-facing payment orchestration.
+
+    Raises:
+        HTTPException: Re-raises domain validation errors or wraps unexpected
+        failures as HTTP 500 responses through the route guard.
+    """
     transaction = await engine.find_one(
         Transaction,
         Transaction.transaction_reference == transaction_reference,
@@ -64,8 +104,14 @@ async def initiate_payment(
         application.user_id = user_id
         application.updated_at = datetime.now(timezone.utc)
         await engine.save(application)
-    elif application.user_id is not None and user_id is not None and application.user_id != user_id:
-        raise AuthorizationServiceError("You are not allowed to initiate payment for this transaction.")
+    elif (
+        application.user_id is not None
+        and user_id is not None
+        and application.user_id != user_id
+    ):
+        raise AuthorizationServiceError(
+            "You are not allowed to initiate payment for this transaction."
+        )
 
     provider_session = await payment_service.request_provider_hosted_payment_session(
         transaction_reference=transaction_reference,
@@ -77,9 +123,7 @@ async def initiate_payment(
         customer_email=application.personal_details.email,
         customer_mobile_number=application.personal_details.mobile_number,
         selected_payment_method=(
-            request_data.selected_payment_method
-            if request_data is not None
-            else None
+            request_data.selected_payment_method if request_data is not None else None
         ),
     )
     await payment_service.mark_payment_initiated(
@@ -90,9 +134,7 @@ async def initiate_payment(
             "payment_url": provider_session.payment_url,
             "available_payment_methods": provider_session.available_payment_methods,
             "selected_payment_method": (
-                request_data.selected_payment_method
-                if request_data is not None
-                else None
+                request_data.selected_payment_method if request_data is not None else None
             ),
             "selected_addons": transaction.selected_addons,
         },
@@ -103,12 +145,30 @@ async def initiate_payment(
     )
 
 
-@payment_router.get("/status/{transaction_reference}", response_model=APIResponse[PaymentStatusResponse])
+@payment_router.get(
+    "/status/{transaction_reference}",
+    response_model=APIResponse[PaymentStatusResponse],
+)
+@route_guard
 async def get_payment_status(
     transaction_reference: str,
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[PaymentStatusResponse]:
-    """Return payment and transaction status for guest or authenticated polling flows."""
+    """
+    Return the payment and transaction status for a customer transaction.
+
+    Args:
+        transaction_reference: Main transaction reference being polled.
+        engine: Active ODMantic database engine dependency.
+
+    Returns:
+        APIResponse[PaymentStatusResponse]: Current payment state and linked
+        transaction state for frontend polling flows.
+
+    Raises:
+        HTTPException: Re-raises domain validation errors or wraps unexpected
+        failures as HTTP 500 responses through the route guard.
+    """
     transaction = await engine.find_one(
         Transaction,
         Transaction.transaction_reference == transaction_reference,
@@ -127,12 +187,27 @@ async def get_payment_status(
 
 
 @payment_router.get("/receipt/{payment_reference}", response_class=FileResponse)
+@route_guard
 async def download_payment_receipt(
     payment_reference: str,
     engine: AIOEngine = Depends(get_database),
     user_id: str = Depends(get_current_user_id),
 ) -> FileResponse:
-    """Download a payment receipt for an authenticated customer-owned transaction."""
+    """
+    Download a payment receipt for an authenticated customer-owned payment.
+
+    Args:
+        payment_reference: Provider payment reference used to locate the receipt.
+        engine: Active ODMantic database engine dependency.
+        user_id: Authenticated customer identifier used for access control.
+
+    Returns:
+        FileResponse: PDF receipt file streamed to the client.
+
+    Raises:
+        HTTPException: Re-raises domain validation errors or wraps unexpected
+        failures as HTTP 500 responses through the route guard.
+    """
     payment = await engine.find_one(Payment, Payment.payment_reference == payment_reference)
     if payment is None:
         raise NotFoundServiceError("The requested payment receipt could not be found.")

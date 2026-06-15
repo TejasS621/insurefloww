@@ -1,10 +1,25 @@
-﻿"""Admin routes for the main backend."""
+"""
+Handle admin routes for the main backend.
+
+Args:
+    None: This module defines the admin router covering broker management,
+    provider management, tickets, underwriting, policies, transactions,
+    payments, dashboard statistics, and audit-log workflows.
+
+Returns:
+    None: Route handlers return structured admin responses under `/api/v1/admin`.
+
+Raises:
+    HTTPException: Route handlers re-raise handled controller errors and
+    normalize unexpected failures through the shared route guard.
+"""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, status
 from odmantic import AIOEngine
 
+from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import (
     to_admin_application_response,
     to_admin_broker_response,
@@ -19,9 +34,7 @@ from backend.main_backend.core.apis.routes._mappers import (
     to_status_count_response,
     to_underwriting_review_response,
 )
-from backend.main_backend.core.apis.routes.dependencies import (
-    get_current_admin_actor,
-)
+from backend.main_backend.core.apis.routes.dependencies import get_current_admin_actor
 from backend.main_backend.core.apis.schemas.requests.admin_request import (
     ApplicationReviewRequest,
     BrokerKeyRotationRequest,
@@ -38,22 +51,28 @@ from backend.main_backend.core.apis.schemas.responses.admin_response import (
     AdminApplicationResponse,
     AdminPaymentResponse,
     AdminPolicyResponse,
-    ProviderRegistryResponse,
     AdminTicketResponse,
     AdminTransactionDetailResponse,
     AdminTransactionResponse,
     AuditLogResponse,
     BrokerRegistryResponse,
     DashboardStatisticsResponse,
+    ProviderRegistryResponse,
     UnderwritingReviewResponse,
 )
 from backend.main_backend.core.apis.schemas.responses.common_response import APIResponse
 from backend.main_backend.core.database.database import get_database
 from backend.main_backend.core.models.application_model import Application
-from backend.main_backend.core.services.admin_workflow_service import admin_workflow_service
+from backend.main_backend.core.services.admin_workflow_service import (
+    admin_workflow_service,
+)
 from backend.provider_backend.core.apis.schemas.requests.provider_request import (
     BrokerRegistrationRequest as ProviderBrokerRegistrationRequest,
+)
+from backend.provider_backend.core.apis.schemas.requests.provider_request import (
     BrokerStatusUpdateRequest as ProviderBrokerStatusUpdateRequest,
+)
+from backend.provider_backend.core.apis.schemas.requests.provider_request import (
     KeyRotationRequest as ProviderKeyRotationRequest,
 )
 from backend.provider_backend.core.services.broker_service import broker_service
@@ -61,13 +80,33 @@ from backend.provider_backend.core.services.broker_service import broker_service
 admin_router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 
 
-@admin_router.post("/brokers", response_model=APIResponse[BrokerRegistryResponse], status_code=status.HTTP_201_CREATED)
+@admin_router.post(
+    "/brokers",
+    response_model=APIResponse[BrokerRegistryResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+@route_guard
 async def register_broker(
     request_data: BrokerRegistrationRequest,
     engine: AIOEngine = Depends(get_database),
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[BrokerRegistryResponse]:
-    """Register a broker through the admin orchestration API."""
+    """
+    Register a broker through the admin orchestration API.
+
+    Args:
+        request_data: Validated broker-registration payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin identifier used for audit ownership.
+
+    Returns:
+        APIResponse[BrokerRegistryResponse]: Newly registered broker details,
+        including the one-time API key reveal payload.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     broker, api_key = await broker_service.register_broker(
         engine,
         ProviderBrokerRegistrationRequest(
@@ -93,11 +132,26 @@ async def register_broker(
 
 
 @admin_router.get("/brokers", response_model=APIResponse[list[BrokerRegistryResponse]])
+@route_guard
 async def list_brokers(
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[BrokerRegistryResponse]]:
-    """List registered brokers."""
+    """
+    List all registered brokers for the admin console.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[list[BrokerRegistryResponse]]: Registered broker records
+        formatted for admin views.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     brokers = await broker_service.list_brokers(engine)
     return APIResponse(
         message="Brokers fetched successfully.",
@@ -105,13 +159,32 @@ async def list_brokers(
     )
 
 
-@admin_router.post("/providers", response_model=APIResponse[ProviderRegistryResponse], status_code=status.HTTP_201_CREATED)
+@admin_router.post(
+    "/providers",
+    response_model=APIResponse[ProviderRegistryResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+@route_guard
 async def register_provider(
     request_data: ProviderRegistrationRequest,
     engine: AIOEngine = Depends(get_database),
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[ProviderRegistryResponse]:
-    """Register a provider through the admin orchestration API."""
+    """
+    Register a provider through the admin orchestration API.
+
+    Args:
+        request_data: Validated provider-registration payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin identifier used for audit ownership.
+
+    Returns:
+        APIResponse[ProviderRegistryResponse]: Newly registered provider details.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     provider = await admin_workflow_service.register_provider(
         engine,
         request_data=request_data,
@@ -124,11 +197,25 @@ async def register_provider(
 
 
 @admin_router.get("/providers", response_model=APIResponse[list[ProviderRegistryResponse]])
+@route_guard
 async def list_providers(
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[ProviderRegistryResponse]]:
-    """List registered providers."""
+    """
+    List all registered providers for the admin console.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[list[ProviderRegistryResponse]]: Registered provider records.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     providers = await admin_workflow_service.list_providers(engine)
     return APIResponse(
         message="Providers fetched successfully.",
@@ -136,14 +223,33 @@ async def list_providers(
     )
 
 
-@admin_router.patch("/providers/{provider_code}/status", response_model=APIResponse[ProviderRegistryResponse])
+@admin_router.patch(
+    "/providers/{provider_code}/status",
+    response_model=APIResponse[ProviderRegistryResponse],
+)
+@route_guard
 async def update_provider_status(
     provider_code: str,
     request_data: ProviderStatusUpdateRequest,
     engine: AIOEngine = Depends(get_database),
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[ProviderRegistryResponse]:
-    """Update the lifecycle status of a provider."""
+    """
+    Update the lifecycle status of a provider.
+
+    Args:
+        provider_code: Provider code identifying the target provider record.
+        request_data: Validated status-update payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin identifier used for audit ownership.
+
+    Returns:
+        APIResponse[ProviderRegistryResponse]: Updated provider registry record.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     provider = await admin_workflow_service.update_provider_status(
         engine,
         provider_code=provider_code,
@@ -156,14 +262,33 @@ async def update_provider_status(
     )
 
 
-@admin_router.patch("/brokers/{broker_code}/status", response_model=APIResponse[BrokerRegistryResponse])
+@admin_router.patch(
+    "/brokers/{broker_code}/status",
+    response_model=APIResponse[BrokerRegistryResponse],
+)
+@route_guard
 async def update_broker_status(
     broker_code: str,
     request_data: BrokerStatusUpdateRequest,
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[BrokerRegistryResponse]:
-    """Update the lifecycle status of a broker."""
+    """
+    Update the lifecycle status of a broker.
+
+    Args:
+        broker_code: Broker code identifying the target broker record.
+        request_data: Validated status-update payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[BrokerRegistryResponse]: Updated broker registry record.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     broker = await broker_service.update_broker_status(
         engine,
         broker_code=broker_code,
@@ -178,14 +303,34 @@ async def update_broker_status(
     )
 
 
-@admin_router.put("/brokers/{broker_code}/rotate-key", response_model=APIResponse[BrokerRegistryResponse])
+@admin_router.put(
+    "/brokers/{broker_code}/rotate-key",
+    response_model=APIResponse[BrokerRegistryResponse],
+)
+@route_guard
 async def rotate_broker_key(
     broker_code: str,
     request_data: BrokerKeyRotationRequest,
     engine: AIOEngine = Depends(get_database),
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[BrokerRegistryResponse]:
-    """Rotate broker credentials through the admin API."""
+    """
+    Rotate broker credentials through the admin API.
+
+    Args:
+        broker_code: Broker code identifying the target broker record.
+        request_data: Validated key-rotation payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin identifier used as the fallback actor.
+
+    Returns:
+        APIResponse[BrokerRegistryResponse]: Updated broker details with the
+        one-time replacement API key reveal payload.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     broker, api_key = await broker_service.rotate_broker_key(
         engine,
         broker_code=broker_code,
@@ -201,11 +346,26 @@ async def rotate_broker_key(
 
 
 @admin_router.get("/tickets", response_model=APIResponse[list[AdminTicketResponse]])
+@route_guard
 async def list_tickets(
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AdminTicketResponse]]:
-    """List all customer support tickets for administrative review."""
+    """
+    List all customer support tickets for administrative review.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[list[AdminTicketResponse]]: Ticket records formatted for
+        the admin ticket board.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     tickets = await admin_workflow_service.list_tickets(engine)
     return APIResponse(
         message="Admin tickets fetched successfully.",
@@ -213,13 +373,31 @@ async def list_tickets(
     )
 
 
-@admin_router.get("/tickets/{ticket_reference}", response_model=APIResponse[AdminTicketResponse])
+@admin_router.get(
+    "/tickets/{ticket_reference}",
+    response_model=APIResponse[AdminTicketResponse],
+)
+@route_guard
 async def get_ticket_detail(
     ticket_reference: str,
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[AdminTicketResponse]:
-    """Return one admin ticket detail record for the drawer workflow."""
+    """
+    Return one admin ticket detail record for the drawer workflow.
+
+    Args:
+        ticket_reference: Ticket reference identifying the target support ticket.
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[AdminTicketResponse]: Detailed ticket record for the admin drawer.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     ticket = await admin_workflow_service.get_ticket_detail(
         engine,
         ticket_reference=ticket_reference,
@@ -230,14 +408,33 @@ async def get_ticket_detail(
     )
 
 
-@admin_router.patch("/tickets/{ticket_reference}/assignment", response_model=APIResponse[AdminTicketResponse])
+@admin_router.patch(
+    "/tickets/{ticket_reference}/assignment",
+    response_model=APIResponse[AdminTicketResponse],
+)
+@route_guard
 async def assign_ticket(
     ticket_reference: str,
     request_data: TicketAssignmentRequest,
     engine: AIOEngine = Depends(get_database),
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[AdminTicketResponse]:
-    """Assign a support ticket to an admin owner and persist an audit log."""
+    """
+    Assign a support ticket to an admin owner and persist an audit log.
+
+    Args:
+        ticket_reference: Ticket reference identifying the target support ticket.
+        request_data: Validated assignment payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin identifier used for audit ownership.
+
+    Returns:
+        APIResponse[AdminTicketResponse]: Updated assigned ticket record.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     ticket = await admin_workflow_service.assign_ticket(
         engine,
         ticket_reference=ticket_reference,
@@ -250,14 +447,33 @@ async def assign_ticket(
     )
 
 
-@admin_router.patch("/tickets/{ticket_reference}/status", response_model=APIResponse[AdminTicketResponse])
+@admin_router.patch(
+    "/tickets/{ticket_reference}/status",
+    response_model=APIResponse[AdminTicketResponse],
+)
+@route_guard
 async def update_ticket_status(
     ticket_reference: str,
     request_data: TicketStatusUpdateRequest,
     engine: AIOEngine = Depends(get_database),
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[AdminTicketResponse]:
-    """Update a support ticket status and optional admin response."""
+    """
+    Update a support ticket status and optional admin response.
+
+    Args:
+        ticket_reference: Ticket reference identifying the target support ticket.
+        request_data: Validated status-update payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin identifier used for audit ownership.
+
+    Returns:
+        APIResponse[AdminTicketResponse]: Updated ticket record.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     ticket = await admin_workflow_service.update_ticket_status(
         engine,
         ticket_reference=ticket_reference,
@@ -270,12 +486,30 @@ async def update_ticket_status(
     )
 
 
-@admin_router.get("/applications", response_model=APIResponse[list[AdminApplicationResponse]])
+@admin_router.get(
+    "/applications",
+    response_model=APIResponse[list[AdminApplicationResponse]],
+)
+@route_guard
 async def list_applications(
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AdminApplicationResponse]]:
-    """List all insurance applications for administrative review."""
+    """
+    List all insurance applications for administrative review.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[list[AdminApplicationResponse]]: Application records
+        formatted for administrative review.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     applications = await admin_workflow_service.list_applications(engine)
     return APIResponse(
         message="Admin applications fetched successfully.",
@@ -283,14 +517,33 @@ async def list_applications(
     )
 
 
-@admin_router.patch("/applications/{application_reference}/review", response_model=APIResponse[AdminApplicationResponse])
+@admin_router.patch(
+    "/applications/{application_reference}/review",
+    response_model=APIResponse[AdminApplicationResponse],
+)
+@route_guard
 async def review_application(
     application_reference: str,
     request_data: ApplicationReviewRequest,
     engine: AIOEngine = Depends(get_database),
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[AdminApplicationResponse]:
-    """Review an application and apply an approve, reject, or cancel decision."""
+    """
+    Review an application and apply an approve, reject, or cancel decision.
+
+    Args:
+        application_reference: Application reference identifying the target application.
+        request_data: Validated review-decision payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin identifier used for audit ownership.
+
+    Returns:
+        APIResponse[AdminApplicationResponse]: Updated application review result.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     application = await admin_workflow_service.review_application(
         engine,
         application_reference=application_reference,
@@ -303,12 +556,30 @@ async def review_application(
     )
 
 
-@admin_router.get("/underwriting/reviews", response_model=APIResponse[list[UnderwritingReviewResponse]])
+@admin_router.get(
+    "/underwriting/reviews",
+    response_model=APIResponse[list[UnderwritingReviewResponse]],
+)
+@route_guard
 async def list_underwriting_reviews(
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[UnderwritingReviewResponse]]:
-    """List applications that require or merit manual underwriting review."""
+    """
+    List applications that require or merit manual underwriting review.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[list[UnderwritingReviewResponse]]: Underwriting review queue
+        entries enriched with risk information.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     review_items = await admin_workflow_service.list_underwriting_reviews(engine)
     return APIResponse(
         message="Underwriting review queue fetched successfully.",
@@ -323,14 +594,34 @@ async def list_underwriting_reviews(
     )
 
 
-@admin_router.patch("/underwriting/reviews/{application_reference}", response_model=APIResponse[AdminApplicationResponse])
+@admin_router.patch(
+    "/underwriting/reviews/{application_reference}",
+    response_model=APIResponse[AdminApplicationResponse],
+)
+@route_guard
 async def process_underwriting_review(
     application_reference: str,
     request_data: UnderwritingReviewRequest,
     engine: AIOEngine = Depends(get_database),
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[AdminApplicationResponse]:
-    """Apply a manual underwriting decision to an application in the review queue."""
+    """
+    Apply a manual underwriting decision to an application in the review queue.
+
+    Args:
+        application_reference: Application reference identifying the target application.
+        request_data: Validated underwriting decision payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin identifier used for audit ownership.
+
+    Returns:
+        APIResponse[AdminApplicationResponse]: Updated application after
+        underwriting review is completed.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     application = await admin_workflow_service.process_underwriting_review(
         engine,
         application_reference=application_reference,
@@ -344,11 +635,25 @@ async def process_underwriting_review(
 
 
 @admin_router.get("/policies", response_model=APIResponse[list[AdminPolicyResponse]])
+@route_guard
 async def list_policies(
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AdminPolicyResponse]]:
-    """List all issued policies for administrative management."""
+    """
+    List all issued policies for administrative management.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[list[AdminPolicyResponse]]: Policy records formatted for admin views.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     policies = await admin_workflow_service.list_policies(engine)
     return APIResponse(
         message="Admin policies fetched successfully.",
@@ -356,7 +661,11 @@ async def list_policies(
     )
 
 
-@admin_router.get("/transactions", response_model=APIResponse[list[AdminTransactionResponse]])
+@admin_router.get(
+    "/transactions",
+    response_model=APIResponse[list[AdminTransactionResponse]],
+)
+@route_guard
 async def list_transactions(
     status: str = Query(default="ALL"),
     search: str | None = Query(default=None),
@@ -365,7 +674,25 @@ async def list_transactions(
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AdminTransactionResponse]]:
-    """List admin-visible transaction records with light filtering and pagination."""
+    """
+    List admin-visible transaction records with filtering and pagination.
+
+    Args:
+        status: Transaction status filter value from the admin UI.
+        search: Optional search term for transaction, type, or customer lookup.
+        page: Page number for paginated admin results.
+        limit: Maximum number of records returned per page.
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[list[AdminTransactionResponse]]: Filtered and paginated
+        transaction records formatted for the admin console.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     transactions = await admin_workflow_service.list_transactions(engine)
     applications = await admin_workflow_service.list_applications(engine)
     application_by_reference = {
@@ -385,10 +712,13 @@ async def list_transactions(
             for transaction in filtered
             if needle in transaction.transaction_reference.lower()
             or needle in transaction.application_snapshot.insurance_type.lower()
-            or needle in (
+            or needle
+            in (
                 f"{transaction.application_snapshot.personal_details.first_name} "
                 f"{transaction.application_snapshot.personal_details.last_name}"
-            ).strip().lower()
+            )
+            .strip()
+            .lower()
         ]
     start = (page - 1) * limit
     paged = filtered[start : start + limit]
@@ -404,13 +734,32 @@ async def list_transactions(
     )
 
 
-@admin_router.get("/transactions/{transaction_reference}", response_model=APIResponse[AdminTransactionDetailResponse])
+@admin_router.get(
+    "/transactions/{transaction_reference}",
+    response_model=APIResponse[AdminTransactionDetailResponse],
+)
+@route_guard
 async def get_transaction_detail(
     transaction_reference: str,
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[AdminTransactionDetailResponse]:
-    """Return one transaction detail payload for the admin drawer."""
+    """
+    Return one transaction detail payload for the admin drawer.
+
+    Args:
+        transaction_reference: Transaction reference identifying the target record.
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[AdminTransactionDetailResponse]: Detailed transaction payload
+        for the admin side drawer.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     transaction = await admin_workflow_service.get_transaction_detail(
         engine,
         transaction_reference=transaction_reference,
@@ -418,7 +767,8 @@ async def get_transaction_detail(
     application = (
         await engine.find_one(
             Application,
-            Application.application_reference == transaction.application_snapshot.application_reference,
+            Application.application_reference
+            == transaction.application_snapshot.application_reference,
         )
         if transaction.application_snapshot.application_reference
         else None
@@ -430,6 +780,7 @@ async def get_transaction_detail(
 
 
 @admin_router.get("/payments", response_model=APIResponse[list[AdminPaymentResponse]])
+@route_guard
 async def list_payments(
     status: str = Query(default="ALL"),
     search: str | None = Query(default=None),
@@ -438,7 +789,25 @@ async def list_payments(
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AdminPaymentResponse]]:
-    """List admin-visible payment records with light filtering and pagination."""
+    """
+    List admin-visible payment records with filtering and pagination.
+
+    Args:
+        status: Payment status filter value from the admin UI.
+        search: Optional search term for payment reference or gateway lookup.
+        page: Page number for paginated admin results.
+        limit: Maximum number of records returned per page.
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[list[AdminPaymentResponse]]: Filtered and paginated payment
+        records formatted for the admin console.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     payments = await admin_workflow_service.list_payments(engine)
     filtered = [
         payment
@@ -462,14 +831,33 @@ async def list_payments(
     )
 
 
-@admin_router.patch("/policies/{policy_number}/status", response_model=APIResponse[AdminPolicyResponse])
+@admin_router.patch(
+    "/policies/{policy_number}/status",
+    response_model=APIResponse[AdminPolicyResponse],
+)
+@route_guard
 async def update_policy_status(
     policy_number: str,
     request_data: PolicyStatusUpdateRequest,
     engine: AIOEngine = Depends(get_database),
     actor_id: str = Depends(get_current_admin_actor),
 ) -> APIResponse[AdminPolicyResponse]:
-    """Update a policy lifecycle state and reflect the change in linked transaction records."""
+    """
+    Update a policy lifecycle state and reflect it in linked transaction records.
+
+    Args:
+        policy_number: Policy number identifying the target policy record.
+        request_data: Validated status-update payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin identifier used for audit ownership.
+
+    Returns:
+        APIResponse[AdminPolicyResponse]: Updated policy record after the change.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     policy = await admin_workflow_service.update_policy_status(
         engine,
         policy_number=policy_number,
@@ -482,12 +870,30 @@ async def update_policy_status(
     )
 
 
-@admin_router.get("/dashboard", response_model=APIResponse[DashboardStatisticsResponse])
+@admin_router.get(
+    "/dashboard",
+    response_model=APIResponse[DashboardStatisticsResponse],
+)
+@route_guard
 async def get_dashboard(
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[DashboardStatisticsResponse]:
-    """Return high-level dashboard metrics for admin operational monitoring."""
+    """
+    Return high-level dashboard metrics for admin operational monitoring.
+
+    Args:
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[DashboardStatisticsResponse]: Aggregated dashboard metrics
+        and status breakdowns for the admin console.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     stats = await admin_workflow_service.get_dashboard_statistics(engine)
     return APIResponse(
         message="Admin dashboard statistics fetched successfully.",
@@ -519,12 +925,28 @@ async def get_dashboard(
 
 
 @admin_router.get("/audit-logs", response_model=APIResponse[list[AuditLogResponse]])
+@route_guard
 async def list_audit_logs(
     limit: int = Query(default=100, ge=1, le=500),
     engine: AIOEngine = Depends(get_database),
     _: str = Depends(get_current_admin_actor),
 ) -> APIResponse[list[AuditLogResponse]]:
-    """List the newest audit log records captured for admin workflow actions."""
+    """
+    List the newest audit-log records captured for admin workflow actions.
+
+    Args:
+        limit: Maximum number of audit-log records returned to the admin UI.
+        engine: Active ODMantic database engine dependency.
+        _: Authenticated admin dependency enforcing admin-only access.
+
+    Returns:
+        APIResponse[list[AuditLogResponse]]: Recent audit-log records formatted
+        for admin review.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
     logs = await admin_workflow_service.list_audit_logs(engine, limit=limit)
     return APIResponse(
         message="Audit logs fetched successfully.",

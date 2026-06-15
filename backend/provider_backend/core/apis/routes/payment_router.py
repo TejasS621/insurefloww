@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import HTMLResponse
 from odmantic import AIOEngine
 
+from backend.provider_backend.core.apis.routes._helpers import route_guard
 from backend.provider_backend.core.apis.routes._mappers import (
     to_mock_payment_session_response,
     to_provider_payment_response,
@@ -24,11 +25,12 @@ from backend.provider_backend.core.database.database import get_database
 from backend.provider_backend.core.services.payment_service import provider_payment_service
 from backend.provider_backend.core.services.service_exceptions import NotFoundServiceError
 
-payment_router = APIRouter(prefix="/api/v1/provider/payments", tags=["Provider Payments"])
+payment_router = APIRouter(prefix="/api/v1/payments", tags=["Provider Payments"])
 mock_payment_router = APIRouter(prefix="/mock-razorpay", tags=["Mock Razorpay"])
 
 
 @payment_router.post("/create-session", response_model=APIResponse[ProviderPaymentResponse], status_code=status.HTTP_201_CREATED)
+@route_guard
 async def create_payment_session(
     request_data: PaymentSessionCreateRequest,
     engine: AIOEngine = Depends(get_database),
@@ -43,6 +45,7 @@ async def create_payment_session(
 
 
 @payment_router.post("/create", response_model=APIResponse[MockPaymentSessionResponse], status_code=status.HTTP_201_CREATED)
+@route_guard
 async def create_mock_payment_session(
     request_data: MockPaymentCreateRequest,
     engine: AIOEngine = Depends(get_database),
@@ -57,6 +60,7 @@ async def create_mock_payment_session(
 
 
 @mock_payment_router.get("/pay/{payment_reference}", response_class=HTMLResponse)
+@route_guard
 async def render_mock_payment_page(
     payment_reference: str,
     engine: AIOEngine = Depends(get_database),
@@ -372,7 +376,7 @@ async def render_mock_payment_page(
             }};
 
             try {{
-              const response = await fetch('/api/v1/provider/webhooks/payment-success', {{
+              const response = await fetch('/api/v1/webhooks/payment-success', {{
                 method: 'POST',
                 headers: {{
                   'Content-Type': 'application/json'

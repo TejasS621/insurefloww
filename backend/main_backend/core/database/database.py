@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from odmantic import AIOEngine
 
 from backend.main_backend.commons.config import settings
+from backend.main_backend.commons.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _client: Optional[AsyncIOMotorClient] = None
 _engine: Optional[AIOEngine] = None

@@ -1,4 +1,18 @@
-﻿"""Application lifecycle services for the main backend."""
+"""
+Implement customer application lifecycle services for the main backend.
+
+Args:
+    None: This module defines the service layer responsible for application
+    creation, journey resumption, and application retrieval.
+
+Returns:
+    None: Service methods return ODMantic models and typed service results
+    used by the route layer.
+
+Raises:
+    ServiceError: Validation and conflict errors are raised from the service
+    layer when application workflow rules are violated.
+"""
 
 from __future__ import annotations
 
@@ -23,7 +37,10 @@ from backend.main_backend.core.models.shared import (
     InsuranceType as ModelInsuranceType,
     PersonalDetails,
 )
-from backend.main_backend.core.models.transaction_model import Transaction, TransactionStatus
+from backend.main_backend.core.models.transaction_model import (
+    Transaction,
+    TransactionStatus,
+)
 
 from .service_exceptions import ConflictServiceError
 
@@ -39,7 +56,19 @@ class ApplicationServiceResult:
 
 
 class ApplicationService:
-    """Create, resume, and retrieve customer insurance applications."""
+    """
+    Create, resume, and retrieve customer insurance applications.
+
+    Args:
+        None: Service state is derived from method inputs and database calls.
+
+    Returns:
+        None: Instance methods return typed application workflow results.
+
+    Raises:
+        ServiceError: Domain-specific service exceptions are raised when
+        application workflow rules fail validation.
+    """
 
     ACTIVE_STATUSES = {
         TransactionStatus.APPLICATION_SUBMITTED,
@@ -55,12 +84,28 @@ class ApplicationService:
         mobile_number: str,
         insurance_type: str,
     ) -> tuple[Application | None, Transaction | None]:
-        """Find an active transaction for a mobile number and insurance type."""
+        """
+        Find an active transaction for a mobile number and insurance type.
+
+        Args:
+            engine: Active ODMantic database engine dependency.
+            mobile_number: Customer mobile number used to match journeys.
+            insurance_type: Insurance type used to scope the search.
+
+        Returns:
+            tuple[Application | None, Transaction | None]: Matching active
+            application and transaction, or `(None, None)` if not found.
+
+        Raises:
+            ConflictServiceError: Propagates if downstream validation fails.
+        """
         applications = await engine.find(
             Application,
             Application.insurance_type == ModelInsuranceType(insurance_type),
         )
-        for application in sorted(applications, key=lambda item: item.created_at, reverse=True):
+        for application in sorted(
+            applications, key=lambda item: item.created_at, reverse=True
+        ):
             if application.personal_details.mobile_number != mobile_number:
                 continue
             if not application.transaction_reference:
@@ -80,14 +125,31 @@ class ApplicationService:
         *,
         user_id: str | None = None,
     ) -> ApplicationServiceResult:
-        """Create a new application or resume an active journey if one exists."""
+        """
+        Create a new application or resume an active customer journey.
+
+        Args:
+            engine: Active ODMantic database engine dependency.
+            request_data: Validated application payload from ApplicationCreateRequest.
+            user_id: Optional authenticated customer identifier for ownership.
+
+        Returns:
+            ApplicationServiceResult: Persisted application, transaction, and
+            insurance detail records for the customer journey.
+
+        Raises:
+            ConflictServiceError: Raised when a workflow rule prevents the
+            application from being created or resumed safely.
+        """
         existing_application, existing_transaction = await self.find_active_journey(
             engine,
             mobile_number=request_data.personal_details.mobile_number,
             insurance_type=request_data.insurance_type.value,
         )
         if existing_application and existing_transaction:
-            insurance_details = await self._get_insurance_details(engine, existing_transaction)
+            insurance_details = await self._get_insurance_details(
+                engine, existing_transaction
+            )
             return ApplicationServiceResult(
                 resumed=True,
                 application=existing_application,
@@ -95,8 +157,12 @@ class ApplicationService:
                 insurance_details=insurance_details,
             )
 
-        application_reference = self._generate_reference("APP", request_data.insurance_type.value)
-        transaction_reference = self._generate_reference("TXN", request_data.insurance_type.value)
+        application_reference = self._generate_reference(
+            "APP", request_data.insurance_type.value
+        )
+        transaction_reference = self._generate_reference(
+            "TXN", request_data.insurance_type.value
+        )
 
         personal_payload = request_data.personal_details.model_dump()
         personal_payload["date_of_birth"] = datetime.combine(
@@ -108,8 +174,12 @@ class ApplicationService:
         health_details = (
             HealthDetails(
                 **{
-                    **request_data.health_details.model_dump(exclude={"other_conditions"}),
-                    "other_conditions": ", ".join(request_data.health_details.other_conditions)
+                    **request_data.health_details.model_dump(
+                        exclude={"other_conditions"}
+                    ),
+                    "other_conditions": ", ".join(
+                        request_data.health_details.other_conditions
+                    )
                     if request_data.health_details.other_conditions
                     else None,
                 }
@@ -117,7 +187,9 @@ class ApplicationService:
             if request_data.health_details
             else HealthDetails()
         )
-        coverage_details = CoverageDetails(**request_data.coverage_details.model_dump())
+        coverage_details = CoverageDetails(
+            **request_data.coverage_details.model_dump()
+        )
 
         application = Application(
             application_reference=application_reference,
@@ -175,7 +247,19 @@ class ApplicationService:
         engine: AIOEngine,
         application_reference: str,
     ) -> Application | None:
-        """Fetch a single application by external reference."""
+        """
+        Fetch a single application by its external reference.
+
+        Args:
+            engine: Active ODMantic database engine dependency.
+            application_reference: Human-readable application reference value.
+
+        Returns:
+            Application | None: Matching application record if one exists.
+
+        Raises:
+            ConflictServiceError: Propagates if a database workflow rule fails.
+        """
         return await engine.find_one(
             Application,
             Application.application_reference == application_reference,
@@ -187,7 +271,19 @@ class ApplicationService:
         *,
         user_id: str,
     ) -> list[Application]:
-        """List applications owned by a given user identifier."""
+        """
+        List applications owned by a specific customer identifier.
+
+        Args:
+            engine: Active ODMantic database engine dependency.
+            user_id: Authenticated user identifier used for ownership lookup.
+
+        Returns:
+            list[Application]: All applications owned by the supplied user.
+
+        Raises:
+            ConflictServiceError: Raised when the provided user identifier is invalid.
+        """
         if not user_id.strip():
             raise ConflictServiceError("A valid user identifier is required.")
         return await engine.find(Application, Application.user_id == user_id)
@@ -197,7 +293,19 @@ class ApplicationService:
         engine: AIOEngine,
         transaction: Transaction,
     ) -> InsuranceDetails | None:
-        """Fetch insurance details associated with a transaction."""
+        """
+        Fetch insurance details associated with a transaction.
+
+        Args:
+            engine: Active ODMantic database engine dependency.
+            transaction: Transaction whose insurance details should be loaded.
+
+        Returns:
+            InsuranceDetails | None: Matching insurance details record if present.
+
+        Raises:
+            ConflictServiceError: Propagates if downstream validation fails.
+        """
         if not transaction.insurance_details_id:
             return None
         records = await engine.find(
@@ -208,7 +316,19 @@ class ApplicationService:
 
     @staticmethod
     def _generate_reference(prefix: str, insurance_type: str) -> str:
-        """Generate a human-readable external reference value."""
+        """
+        Generate a human-readable external reference value.
+
+        Args:
+            prefix: Reference prefix such as `APP` or `TXN`.
+            insurance_type: Insurance type used to embed context in the ID.
+
+        Returns:
+            str: Generated reference value suitable for external use.
+
+        Raises:
+            ValueError: Propagates if invalid reference inputs are supplied.
+        """
         date_part = datetime.now(timezone.utc).strftime("%Y%m%d")
         random_part = secrets.token_hex(3).upper()
         return f"{prefix}-{insurance_type[:3].upper()}-{date_part}-{random_part}"
