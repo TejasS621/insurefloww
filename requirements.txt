@@ -46,3 +46,8 @@ annotated-doc==0.0.4
 colorama==0.4.6
 rich==14.1.0
 typer==0.20.0
+
+# MCP Server
+fastmcp[server]==3.3.1
+mcp>=1.0.0
+respx>=0.22.0
