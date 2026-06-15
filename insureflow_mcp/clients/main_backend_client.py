@@ -1,4 +1,4 @@
-"""Main backend REST client used by customer and admin MCP tools."""
+"""Main backend REST client used by shared InsureFlow integrations."""
 
 from __future__ import annotations
 
@@ -96,21 +96,6 @@ class MainBackendClient(BaseBackendClient):
         return await self.request_json(
             "POST",
             "/tickets",
-            json_body=payload,
-            headers=self._bearer_headers(token),
-        )
-
-    async def list_brokers(self, token: str) -> dict[str, Any]:
-        """List brokers via the admin API."""
-
-        return await self.request_json("GET", "/admin/brokers", headers=self._bearer_headers(token))
-
-    async def register_broker(self, payload: dict[str, Any], token: str) -> dict[str, Any]:
-        """Register a broker through the main backend admin API."""
-
-        return await self.request_json(
-            "POST",
-            "/admin/brokers",
             json_body=payload,
             headers=self._bearer_headers(token),
         )

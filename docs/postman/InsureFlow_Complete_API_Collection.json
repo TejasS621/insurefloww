@@ -17,7 +17,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{main_backend_url}}/health",
+                  "raw": "{{main_backend_url}}/api/v1/health",
                   "host": ["{{main_backend_url}}"],
                   "path": ["health"]
                 }
@@ -636,7 +636,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{provider_backend_url}}/health",
+                  "raw": "{{provider_backend_url}}/api/v1/health",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["health"]
                 }
@@ -662,7 +662,7 @@
                   "raw": "{\"email\": \"provider-admin@insurefloww.com\", \"password\": \"Provider@12345\"}"
                 },
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/auth/login",
+                  "raw": "{{provider_backend_url}}/api/v1/auth/login",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "auth", "login"]
                 }
@@ -692,7 +692,7 @@
                   "raw": "{\"broker_name\": \"XYZ Insurance Broker\", \"broker_code\": \"XYZ001\", \"callback_url\": \"https://broker.example.com/callback\", \"webhook_url\": \"https://broker.example.com/webhook\"}"
                 },
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/brokers/register",
+                  "raw": "{{provider_backend_url}}/api/v1/brokers/register",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "brokers", "register"]
                 }
@@ -709,7 +709,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/brokers",
+                  "raw": "{{provider_backend_url}}/api/v1/brokers",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "brokers"]
                 }
@@ -734,7 +734,7 @@
                   "raw": "{\"status\": \"ACTIVE\", \"reason\": \"Broker approved\"}"
                 },
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/brokers/{{broker_code}}/status",
+                  "raw": "{{provider_backend_url}}/api/v1/brokers/{{broker_code}}/status",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "brokers", "{{broker_code}}", "status"]
                 }
@@ -759,7 +759,7 @@
                   "raw": "{\"rotated_by\": \"provider-admin@insurefloww.com\", \"reason\": \"Scheduled key rotation\"}"
                 },
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/brokers/{{broker_code}}/rotate-key",
+                  "raw": "{{provider_backend_url}}/api/v1/brokers/{{broker_code}}/rotate-key",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "brokers", "{{broker_code}}", "rotate-key"]
                 }
@@ -789,7 +789,7 @@
                   "raw": "{\"transaction_reference\": \"txn_123\", \"personal_details\": {\"first_name\": \"John\", \"last_name\": \"Doe\", \"email\": \"john@example.com\", \"mobile_number\": \"+919876543210\"}, \"insurance_details\": {}}"
                 },
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/quotes/generate",
+                  "raw": "{{provider_backend_url}}/api/v1/quotes/generate",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "quotes", "generate"]
                 }
@@ -811,7 +811,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/policies/{{policy_number}}",
+                  "raw": "{{provider_backend_url}}/api/v1/policies/{{policy_number}}",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "policies", "{{policy_number}}"]
                 }
@@ -828,7 +828,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/policies/{{policy_number}}/document",
+                  "raw": "{{provider_backend_url}}/api/v1/policies/{{policy_number}}/document",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "policies", "{{policy_number}}", "document"]
                 }
@@ -845,7 +845,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/policies/{{policy_number}}/download",
+                  "raw": "{{provider_backend_url}}/api/v1/policies/{{policy_number}}/download",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "policies", "{{policy_number}}", "download"]
                 }
@@ -875,7 +875,7 @@
                   "raw": "{\"payment_reference\": \"pay_123\", \"gateway_order_id\": \"order_123\", \"amount\": 5000.00, \"currency\": \"INR\"}"
                 },
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/payments/create-session",
+                  "raw": "{{provider_backend_url}}/api/v1/payments/create-session",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "payments", "create-session"]
                 }
@@ -900,7 +900,7 @@
                   "raw": "{\"payment_reference\": \"pay_123\", \"amount\": 5000.00, \"currency\": \"INR\"}"
                 },
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/payments/create",
+                  "raw": "{{provider_backend_url}}/api/v1/payments/create",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "payments", "create"]
                 }
@@ -938,7 +938,7 @@
                   "raw": "{\"payment_reference\": \"pay_123\", \"gateway_payment_id\": \"rzp_123\", \"payment_status\": \"SUCCESS\", \"timestamp\": \"2024-01-01T12:00:00Z\"}"
                 },
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/webhooks/payment-success",
+                  "raw": "{{provider_backend_url}}/api/v1/webhooks/payment-success",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "webhooks", "payment-success"]
                 }
@@ -968,7 +968,7 @@
                   "raw": "{\"payment_reference\": \"pay_123\"}"
                 },
                 "url": {
-                  "raw": "{{provider_backend_url}}/api/v1/provider/sync/dispatch",
+                  "raw": "{{provider_backend_url}}/api/v1/sync/dispatch",
                   "host": ["{{provider_backend_url}}"],
                   "path": ["api", "v1", "provider", "sync", "dispatch"]
                 }
