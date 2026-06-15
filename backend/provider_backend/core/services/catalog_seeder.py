@@ -1,34 +1,23 @@
-﻿"""Database seed script â€” populates providers, insurance plans and add-ons.
+﻿"""Startup data seeder for the provider backend.
 
-Run from the repository root:
-    python backend/seed_database.py
-
-The script is idempotent: it safely skips records that already exist.
+Seeds providers, insurance plans, and add-ons into the database on first boot.
+All operations are idempotent â€” existing records are never overwritten.
 """
 
 from __future__ import annotations
 
-import asyncio
-import sys
-from pathlib import Path
+from datetime import datetime, timezone
 
-# â”€â”€â”€ make sure the repo root is on the Python path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-ROOT = str(Path(__file__).resolve().parents[1])
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
-
-from motor.motor_asyncio import AsyncIOMotorClient
 from odmantic import AIOEngine
 
-from backend.provider_backend.core.models.provider_model import Provider, ProviderStatus
-from backend.provider_backend.core.models.insurance_plan_model import InsurancePlan, InsurancePlanStatus
 from backend.provider_backend.core.models.addon_model import AddOn, AddOnStatus
+from backend.provider_backend.core.models.insurance_plan_model import InsurancePlan, InsurancePlanStatus
+from backend.provider_backend.core.models.provider_model import Provider, ProviderStatus
 from backend.provider_backend.core.models.shared import InsuranceType
 
-MONGO_URL = "mongodb://localhost:27017/"
-DB_NAME   = "Insure_floww"
+import logging
 
-# â”€â”€â”€ Provider catalogue â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+logger = logging.getLogger(__name__)
 
 PROVIDERS = [
     {
@@ -82,9 +71,6 @@ PROVIDERS = [
     },
 ]
 
-# â”€â”€â”€ Insurance plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# Each plan belongs to the DEMO_PROVIDER code (the one the main backend uses).
-
 PLANS = [
     # â”€â”€ HEALTH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     {
@@ -134,7 +120,6 @@ PLANS = [
         ],
         "status": InsurancePlanStatus.ACTIVE,
     },
-
     # â”€â”€ LIFE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     {
         "plan_code": "LIFE-TERM-001",
@@ -181,7 +166,6 @@ PLANS = [
         ],
         "status": InsurancePlanStatus.ACTIVE,
     },
-
     # â”€â”€ VEHICLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     {
         "plan_code": "VEH-3P-001",
@@ -213,7 +197,6 @@ PLANS = [
         ],
         "status": InsurancePlanStatus.ACTIVE,
     },
-
     # â”€â”€ TRAVEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     {
         "plan_code": "TRVL-BASIC-001",
@@ -246,7 +229,6 @@ PLANS = [
         ],
         "status": InsurancePlanStatus.ACTIVE,
     },
-
     # â”€â”€ HOME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     {
         "plan_code": "HOME-BASIC-001",
@@ -280,8 +262,6 @@ PLANS = [
         "status": InsurancePlanStatus.ACTIVE,
     },
 ]
-
-# â”€â”€â”€ Add-ons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 ADDONS = [
     # Health add-ons
@@ -321,7 +301,6 @@ ADDONS = [
         "addon_price": 800.0,
         "status": AddOnStatus.ACTIVE,
     },
-
     # Life add-ons
     {
         "addon_code": "LIFE-ADDON-ACC-DEATH",
@@ -350,7 +329,6 @@ ADDONS = [
         "addon_price": 2000.0,
         "status": AddOnStatus.ACTIVE,
     },
-
     # Vehicle add-ons
     {
         "addon_code": "VEH-ADDON-ZERO-DEP",
@@ -379,7 +357,6 @@ ADDONS = [
         "addon_price": 1500.0,
         "status": AddOnStatus.ACTIVE,
     },
-
     # Travel add-ons
     {
         "addon_code": "TRVL-ADDON-SPORTS",
@@ -399,7 +376,6 @@ ADDONS = [
         "addon_price": 800.0,
         "status": AddOnStatus.ACTIVE,
     },
-
     # Home add-ons
     {
         "addon_code": "HOME-ADDON-CONTENTS",
@@ -422,52 +398,53 @@ ADDONS = [
 ]
 
 
-async def seed() -> None:
-    client = AsyncIOMotorClient(MONGO_URL)
-    engine = AIOEngine(client=client, database=DB_NAME)
+async def _backfill_legacy_provider_documents(engine: AIOEngine) -> None:
+    """Populate newly-added provider fields on older MongoDB documents."""
 
-    print(f"\n{'='*60}")
-    print("  InsureFlow Database Seed Script")
-    print(f"{'='*60}\n")
+    collection = engine.get_collection(Provider)
+    await collection.update_many(
+        {"company_name": {"$exists": False}},
+        {"$set": {"company_name": None}},
+    )
+    await collection.update_many(
+        {"supported_insurance_types": {"$exists": False}},
+        {"$set": {"supported_insurance_types": []}},
+    )
+    await collection.update_many(
+        {"supported_regions": {"$exists": False}},
+        {"$set": {"supported_regions": []}},
+    )
+    await collection.update_many(
+        {"serviceable_products": {"$exists": False}},
+        {"$set": {"serviceable_products": []}},
+    )
+    await collection.update_many(
+        {"notes": {"$exists": False}},
+        {"$set": {"notes": None}},
+    )
 
-    # -- Providers
-    print("Seeding providers ...")
+
+async def seed_catalog(engine: AIOEngine) -> None:
+    """Seed providers, plans and add-ons.  Safe to call on every startup."""
+    await _backfill_legacy_provider_documents(engine)
+
+    # â”€â”€ Providers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     for p in PROVIDERS:
         existing = await engine.find_one(Provider, Provider.provider_code == p["provider_code"])
-        if existing:
-            print(f"   [SKIP] Provider '{p['provider_code']}' already exists")
-        else:
-            provider = Provider(**p)
-            await engine.save(provider)
-            print(f"   [OK]   Provider '{p['provider_code']}' created")
+        if not existing:
+            await engine.save(Provider(**p))
+            logger.info("Seeded provider: %s", p["provider_code"])
 
-    # -- Insurance plans
-    print(f"\nSeeding {len(PLANS)} insurance plans ...")
+    # â”€â”€ Plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     for pl in PLANS:
         existing = await engine.find_one(InsurancePlan, InsurancePlan.plan_code == pl["plan_code"])
-        if existing:
-            print(f"   [SKIP] Plan '{pl['plan_code']}' already exists")
-        else:
-            plan = InsurancePlan(**pl)
-            await engine.save(plan)
-            print(f"   [OK]   Plan '{pl['plan_code']}' ({pl['plan_name']}) created")
+        if not existing:
+            await engine.save(InsurancePlan(**pl))
+            logger.info("Seeded insurance plan: %s", pl["plan_code"])
 
-    # -- Add-ons
-    print(f"\nSeeding {len(ADDONS)} add-ons ...")
+    # â”€â”€ Add-ons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     for ao in ADDONS:
         existing = await engine.find_one(AddOn, AddOn.addon_code == ao["addon_code"])
-        if existing:
-            print(f"   [SKIP] Add-on '{ao['addon_code']}' already exists")
-        else:
-            addon = AddOn(**ao)
-            await engine.save(addon)
-            print(f"   [OK]   Add-on '{ao['addon_code']}' ({ao['addon_name']}) created")
-
-    client.close()
-    print(f"\n{'='*60}")
-    print("  Seed complete!")
-    print(f"{'='*60}\n")
-
-
-if __name__ == "__main__":
-    asyncio.run(seed())
+        if not existing:
+            await engine.save(AddOn(**ao))
+            logger.info("Seeded add-on: %s", ao["addon_code"])

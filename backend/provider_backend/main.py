@@ -1,4 +1,4 @@
-"""Development entrypoint for the provider backend service."""
+﻿"""Development entrypoint for the provider backend service."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ root_dir = str(Path(__file__).resolve().parents[2])
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-from backend.provider_backend.app.commons.config import settings
+from backend.provider_backend.commons.config import settings
 
 
-APP_IMPORT = "backend.provider_backend.app.core.apis.api:app"
+APP_IMPORT = "backend.provider_backend.core.apis.api:app"
 
 
 if __name__ == "__main__":
