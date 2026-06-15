@@ -1,30 +1,15 @@
 import {
   Bell,
-  Building2,
-  Blocks,
-  ClipboardList,
-  CreditCard,
-  FileStack,
   FileText,
   Home,
-  LayoutDashboard,
   LifeBuoy,
-  ListOrdered,
-  Shield,
   UserRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "./components/ui/Button";
-import { StatusBadge } from "./components/ui/StatusBadge";
 import { useAsyncAction } from "./hooks/useAsyncAction";
 import { LayoutShell } from "./layouts/LayoutShell";
-import { AdminDashboardScreen } from "./pages/admin/AdminDashboardScreen";
-import { AdminLoginScreen } from "./pages/admin/AdminLoginScreen";
-import { AdminRecordsScreen } from "./pages/admin/AdminRecordsScreen";
-import { AdminTicketsScreen } from "./pages/admin/AdminTicketsScreen";
-import { BrokerManagementScreen } from "./pages/admin/BrokerManagementScreen";
-import { ProviderManagementScreen } from "./pages/admin/ProviderManagementScreen";
 import { ApplicationFlowScreen } from "./pages/application/ApplicationFlowScreen";
 import { CustomerLoginScreen } from "./pages/auth/CustomerLoginScreen";
 import { CustomerDashboardScreen } from "./pages/dashboard/CustomerDashboardScreen";
@@ -51,9 +36,7 @@ import { downloadBlob } from "./utils/download";
 import { normalizeApiError } from "./utils/apiErrors";
 import { openPaymentCheckout } from "./utils/payment";
 
-type PortalMode = "customer" | "admin";
 type CustomerScreen = "landing" | "login" | "application" | "quotes" | "payment" | "dashboard" | "support";
-type AdminScreen = "dashboard" | "brokers" | "providers" | "transactions" | "policies" | "payments" | "tickets";
 type InsuranceType = "HEALTH" | "LIFE" | "VEHICLE" | "TRAVEL" | "HOME";
 type CustomerLoginTarget = "application" | "dashboard" | "support";
 
@@ -79,21 +62,16 @@ interface SectionState<T> {
 }
 
 interface AppHistoryState {
-  portalMode: PortalMode;
   customerScreen: CustomerScreen;
-  adminScreen: AdminScreen;
 }
 
 /**
- * App wires the customer and admin UI flows to the API layer.
+ * App wires the customer UI flow to the API layer.
  * Session tokens stay in memory for the active browser run and all async paths expose loading and error states.
  */
 export default function App() {
-  const [portalMode, setPortalMode] = useState<PortalMode>("customer");
   const [customerScreen, setCustomerScreen] = useState<CustomerScreen>("landing");
-  const [adminScreen, setAdminScreen] = useState<AdminScreen>("dashboard");
   const [customerToken, setCustomerToken] = useState<string | null>(authStore.getState().customerToken);
-  const [adminToken, setAdminToken] = useState<string | null>(authStore.getState().adminToken);
   const [selectedInsuranceType, setSelectedInsuranceType] = useState<InsuranceType>("HEALTH");
   const [otpRequested, setOtpRequested] = useState(false);
   const [otpError, setOtpError] = useState("");
@@ -133,9 +111,7 @@ export default function App() {
   const buildHistoryState = (
     overrides: Partial<AppHistoryState> = {},
   ): AppHistoryState => ({
-    portalMode,
     customerScreen,
-    adminScreen,
     ...overrides,
   });
 
@@ -158,24 +134,7 @@ export default function App() {
     options?: { replace?: boolean },
   ) => {
     setCustomerScreen(nextScreen);
-    syncHistory(buildHistoryState({ customerScreen: nextScreen, portalMode: "customer" }), options);
-  };
-
-  const navigateAdminScreen = (
-    nextScreen: AdminScreen,
-    options?: { replace?: boolean },
-  ) => {
-    setPortalMode("admin");
-    setAdminScreen(nextScreen);
-    syncHistory(buildHistoryState({ portalMode: "admin", adminScreen: nextScreen }), options);
-  };
-
-  const navigatePortalMode = (
-    nextMode: PortalMode,
-    options?: { replace?: boolean },
-  ) => {
-    setPortalMode(nextMode);
-    syncHistory(buildHistoryState({ portalMode: nextMode }), options);
+    syncHistory(buildHistoryState({ customerScreen: nextScreen }), options);
   };
 
   const checkRateLimit = (error: unknown) => {
@@ -196,18 +155,12 @@ export default function App() {
   useEffect(() => {
     return authStore.subscribe((state) => {
       setCustomerToken(state.customerToken);
-      setAdminToken(state.adminToken);
     });
   }, []);
 
   useEffect(() => {
     const initialState = window.history.state as AppHistoryState | null;
-    if (
-      !initialState ||
-      !initialState.portalMode ||
-      !initialState.customerScreen ||
-      !initialState.adminScreen
-    ) {
+    if (!initialState || !initialState.customerScreen) {
       syncHistory(buildHistoryState(), { replace: true });
     }
 
@@ -216,9 +169,7 @@ export default function App() {
       if (!state) {
         return;
       }
-      setPortalMode(state.portalMode);
       setCustomerScreen(state.customerScreen);
-      setAdminScreen(state.adminScreen);
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -292,18 +243,7 @@ export default function App() {
     [customerScreen, customerToken],
   );
 
-  const adminNavItems = useMemo(
-    () => [
-      { label: "Dashboard", icon: LayoutDashboard, active: adminScreen === "dashboard", onClick: () => navigateAdminScreen("dashboard") },
-      { label: "Brokers", icon: Blocks, active: adminScreen === "brokers", onClick: () => navigateAdminScreen("brokers") },
-      { label: "Providers", icon: Building2, active: adminScreen === "providers", onClick: () => navigateAdminScreen("providers") },
-      { label: "Transactions", icon: ListOrdered, active: adminScreen === "transactions", onClick: () => navigateAdminScreen("transactions") },
-      { label: "Policies", icon: FileStack, active: adminScreen === "policies", onClick: () => navigateAdminScreen("policies") },
-      { label: "Payments", icon: CreditCard, active: adminScreen === "payments", onClick: () => navigateAdminScreen("payments") },
-      { label: "Tickets", icon: ClipboardList, active: adminScreen === "tickets", onClick: () => navigateAdminScreen("tickets") },
-    ],
-    [adminScreen],
-  );
+
 
   const customerDisplayName = useMemo(() => {
     const source = applicationsState.data[0] ?? resumedApplication;
@@ -609,57 +549,7 @@ export default function App() {
     });
   };
 
-  if (portalMode === "admin" && !adminToken) {
-    return (
-      <div>
-        <div className="if-portal-switch">
-              <Button onClick={() => navigatePortalMode("customer")} variant="ghost">
-                Customer Portal
-          </Button>
-          <Button>Admin Portal</Button>
-        </div>
-        <AdminLoginScreen />
-      </div>
-    );
-  }
 
-  if (portalMode === "admin") {
-    return (
-      <LayoutShell
-        navProps={{
-          notificationCount: 4,
-          rightSlot: (
-            <>
-              <StatusBadge status="admin">Admin</StatusBadge>
-              <Button variant="ghost" iconOnly ariaLabel="Notifications">
-                <Bell size={18} />
-              </Button>
-              <button className="if-avatar-button" type="button" aria-label="Open admin menu">
-                AD
-              </button>
-              <Button onClick={() => navigatePortalMode("customer")} variant="ghost">
-                Customer
-              </Button>
-            </>
-          ),
-        }}
-        sidebarProps={{
-          title: "Admin Console",
-          items: adminNavItems,
-        }}
-      >
-        {adminScreen === "dashboard" ? (
-          <AdminDashboardScreen onNavigate={(screen) => navigateAdminScreen(screen)} />
-        ) : null}
-        {adminScreen === "brokers" ? <BrokerManagementScreen /> : null}
-        {adminScreen === "providers" ? <ProviderManagementScreen /> : null}
-        {adminScreen === "transactions" ? <AdminRecordsScreen view="transactions" /> : null}
-        {adminScreen === "policies" ? <AdminRecordsScreen view="policies" /> : null}
-        {adminScreen === "payments" ? <AdminRecordsScreen view="payments" /> : null}
-        {adminScreen === "tickets" ? <AdminTicketsScreen /> : null}
-      </LayoutShell>
-    );
-  }
 
   return (
     <LayoutShell
@@ -667,9 +557,6 @@ export default function App() {
         notificationCount: customerToken ? 2 : undefined,
         rightSlot: (
           <>
-            <Button onClick={() => navigatePortalMode("admin")} variant="ghost">
-              Admin
-            </Button>
             {customerToken ? (
               <>
                 <Button variant="ghost" iconOnly ariaLabel="Notifications">
