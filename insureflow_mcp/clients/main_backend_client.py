@@ -30,16 +30,6 @@ class MainBackendClient(BaseBackendClient):
 
         return await self.request_json("POST", "/auth/login/verify", json_body=payload)
 
-    async def admin_login(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Validate admin credentials and receive the current admin login payload."""
-
-        return await self.request_json("POST", "/auth/admin/login", json_body=payload)
-
-    async def admin_verify(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Verify the admin OTP flow and receive an access token."""
-
-        return await self.request_json("POST", "/auth/admin/login/verify", json_body=payload)
-
     async def create_application(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Create an application and trigger quote generation."""
 
@@ -102,10 +92,10 @@ class MainBackendClient(BaseBackendClient):
 
     @staticmethod
     def _bearer_headers(token: str | None) -> dict[str, str]:
-        """Build bearer authorization headers or raise when no token is available."""
+        """Build customer bearer authorization headers or raise when no token is available."""
 
         if not token:
             raise AuthenticationRequiredError(
-                "This tool requires a customer or admin JWT token to be configured."
+                "This tool requires a customer JWT token to be configured."
             )
         return {"Authorization": f"Bearer {token}"}
