@@ -12,6 +12,8 @@ It does not implement quote generation, underwriting, payment processing, or any
 
 ## Supported Tools
 
+- `request_customer_otp`
+- `verify_customer_otp`
 - `generate_quote`
 - `select_quote`
 - `initiate_payment`
@@ -21,8 +23,14 @@ It does not implement quote generation, underwriting, payment processing, or any
 - `create_ticket`
 
 These tools stay thin and map directly to existing InsureFlow backend routes.
-Some post-purchase tools still require a valid customer JWT because the backend
-policy and ticket routes are authenticated.
+
+Recommended journey:
+- guest journey: `generate_quote` → `select_quote` → `initiate_payment` → `get_payment_status`
+- post-purchase journey: `request_customer_otp` → `verify_customer_otp` → `get_policy` → `download_policy` → `create_ticket`
+
+The post-purchase tools use the authenticated customer session stored inside
+the MCP process after OTP verification. Explicit customer tokens are now only
+fallback inputs, not the primary customer flow.
 
 ## Package Layout
 

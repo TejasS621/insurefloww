@@ -10,10 +10,13 @@ class CreateTicketInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    customer_access_token: str = Field(
-        ...,
+    customer_access_token: str | None = Field(
+        default=None,
         min_length=20,
-        description="Customer JWT access token required by the authenticated ticket endpoint.",
+        description=(
+            "Optional customer JWT access token. "
+            "If omitted, the MCP server will use the current stored customer session when available."
+        ),
     )
     transaction_reference: str | None = Field(
         default=None,

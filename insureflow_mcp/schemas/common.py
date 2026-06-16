@@ -56,43 +56,63 @@ class PersonalDetailsInput(BaseModel):
 class HealthDetailsInput(BaseModel):
     """Health underwriting input required for health insurance applications."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "description": (
+                "Required underwriting details for HEALTH insurance. "
+                "Before generating a health quote, collect height, weight, "
+                "smoker status, diabetes status, blood pressure history, "
+                "heart ailments, whether the customer has any pre-existing "
+                "disease, and any other medical conditions."
+            )
+        },
+    )
 
     height_cm: float | None = Field(
         default=None,
         ge=50,
         le=250,
-        description="Customer height in centimeters.",
+        description="Customer height in centimeters. Ask this for health quote underwriting.",
     )
     weight_kg: float | None = Field(
         default=None,
         ge=10,
         le=300,
-        description="Customer weight in kilograms.",
+        description="Customer weight in kilograms. Ask this for health quote underwriting.",
     )
     calculated_bmi: float | None = Field(
         default=None,
         ge=0,
         le=100,
-        description="Optional BMI value if already calculated by the caller.",
+        description="Optional BMI value if already calculated by the caller. It can be omitted if height and weight are provided.",
     )
-    smoker: bool = Field(default=False, description="Whether the customer is a smoker.")
-    diabetes: bool = Field(default=False, description="Whether the customer has diabetes.")
+    smoker: bool = Field(
+        default=False,
+        description="Whether the customer is a smoker. Ask this explicitly for health insurance.",
+    )
+    diabetes: bool = Field(
+        default=False,
+        description="Whether the customer has diabetes. Ask this explicitly for health insurance.",
+    )
     blood_pressure: bool = Field(
         default=False,
-        description="Whether the customer has blood pressure history.",
+        description="Whether the customer has blood pressure history. Ask this explicitly for health insurance.",
     )
     heart_ailments: bool = Field(
         default=False,
-        description="Whether the customer has heart-related ailments.",
+        description="Whether the customer has heart-related ailments. Ask this explicitly for health insurance.",
     )
     pre_existing_disease: bool = Field(
         default=False,
-        description="Whether the customer has any pre-existing disease.",
+        description="Whether the customer has any pre-existing disease. This is a required underwriting question for health quotes.",
     )
     other_conditions: list[str] = Field(
         default_factory=list,
-        description="Optional list of other medical conditions not covered by the boolean flags.",
+        description=(
+            "Optional list of other medical conditions not covered by the boolean flags, "
+            "for example thyroid, asthma, liver disease, kidney disease, or any prior illness."
+        ),
     )
 
 

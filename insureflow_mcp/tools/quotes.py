@@ -107,8 +107,10 @@ def register_quote_tools(mcp_server: Any, tools: QuoteTools) -> None:
         name="generate_quote",
         description=(
             "Create a full InsureFlow application and return generated quotes. "
-            "Collect complete customer details, coverage details, and health details "
-            "for HEALTH insurance before calling this tool."
+            "Collect complete customer identity, mobile number, email, date of birth, gender, "
+            "address, coverage preferences, and for HEALTH insurance also collect height, weight, "
+            "smoker status, diabetes, blood pressure history, heart ailments, pre-existing disease, "
+            "and any other medical conditions before calling this tool."
         ),
     )
     async def generate_quote(payload: GenerateQuoteInput) -> dict[str, Any]:

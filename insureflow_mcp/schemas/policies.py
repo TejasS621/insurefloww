@@ -13,10 +13,13 @@ class GetPolicyInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     policy_number: str = Field(..., description="Policy number to fetch from the main backend.")
-    customer_access_token: str = Field(
-        ...,
+    customer_access_token: str | None = Field(
+        default=None,
         min_length=20,
-        description="Customer JWT access token required by the authenticated policy endpoint.",
+        description=(
+            "Optional customer JWT access token. "
+            "If omitted, the MCP server will use the current stored customer session when available."
+        ),
     )
 
 
@@ -45,10 +48,13 @@ class DownloadPolicyInput(BaseModel):
         ...,
         description="Policy number whose PDF document should be downloaded.",
     )
-    customer_access_token: str = Field(
-        ...,
+    customer_access_token: str | None = Field(
+        default=None,
         min_length=20,
-        description="Customer JWT access token required by the authenticated policy download endpoint.",
+        description=(
+            "Optional customer JWT access token. "
+            "If omitted, the MCP server will use the current stored customer session when available."
+        ),
     )
 
 
