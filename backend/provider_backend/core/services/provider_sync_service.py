@@ -9,6 +9,7 @@ import httpx
 from odmantic import AIOEngine
 
 from backend.provider_backend.commons.config import settings
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.models.payment_model import Payment, PaymentStatus
 from backend.provider_backend.core.models.policy_model import Policy, PolicyStatus
 from backend.provider_backend.core.models.webhook_retry_model import (
@@ -17,6 +18,8 @@ from backend.provider_backend.core.models.webhook_retry_model import (
 )
 
 from .service_exceptions import ConflictServiceError, NotFoundServiceError
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -170,6 +173,12 @@ class ProviderSyncService:
                 response.raise_for_status()
         except httpx.HTTPError as exc:
             await self._mark_retry_failure(engine, record, str(exc))
+            logger.warning(
+                "Provider sync '%s' failed for transaction '%s': %s",
+                event_type,
+                main_transaction_reference,
+                str(exc),
+            )
             return record
 
         record.status = WebhookRetryStatus.SUCCESS
@@ -177,6 +186,11 @@ class ProviderSyncService:
         record.next_retry_at = None
         record.updated_at = datetime.now(timezone.utc)
         await engine.save(record)
+        logger.info(
+            "Provider sync '%s' succeeded for transaction '%s'.",
+            event_type,
+            main_transaction_reference,
+        )
         return record
 
     async def _get_or_create_retry_record(

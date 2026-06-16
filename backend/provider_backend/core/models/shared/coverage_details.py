@@ -1,3 +1,5 @@
+"""Embedded coverage selection models for provider-side records."""
+
 from __future__ import annotations
 
 from enum import Enum

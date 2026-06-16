@@ -1,3 +1,5 @@
+"""Embedded application snapshot models shared across main-backend records."""
+
 from __future__ import annotations
 
 from odmantic import EmbeddedModel, Field

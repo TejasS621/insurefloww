@@ -24,6 +24,7 @@ from datetime import datetime, timedelta, timezone
 from odmantic import AIOEngine
 
 from backend.main_backend.commons.config import settings
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.models.user_model import (
     AdminOTPToken,
     OTPPurpose,
@@ -31,6 +32,8 @@ from backend.main_backend.core.models.user_model import (
 )
 
 from .service_exceptions import AuthenticationServiceError, NotFoundServiceError
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -74,8 +77,10 @@ class AuthService:
             not match the configured admin account.
         """
         if email.strip().lower() != settings.admin_email.strip().lower():
+            logger.warning("Rejected admin credential authentication for '%s'.", email)
             raise AuthenticationServiceError("The supplied admin credentials are invalid.")
         if password != settings.admin_password:
+            logger.warning("Rejected admin credential authentication for '%s'.", email)
             raise AuthenticationServiceError("The supplied admin credentials are invalid.")
         return settings.admin_email
 
@@ -116,6 +121,7 @@ class AuthService:
             expires_at=expires_at,
         )
         await engine.save(token)
+        logger.info("Generated admin OTP challenge for '%s'.", settings.admin_email)
 
         return OTPDispatchResult(
             mobile_number=settings.admin_email,
@@ -158,6 +164,7 @@ class AuthService:
             AdminOTPToken.email == settings.admin_email,
         )
         if not tokens:
+            logger.warning("No admin OTP session found for '%s'.", email)
             raise NotFoundServiceError("No admin OTP session exists. Start sign in again.")
 
         latest_token = max(tokens, key=lambda token: token.created_at)
@@ -177,6 +184,7 @@ class AuthService:
 
         latest_token.is_used = True
         await engine.save(latest_token)
+        logger.info("Verified admin OTP for '%s'.", settings.admin_email)
         return settings.admin_email
 
     async def request_customer_otp(
@@ -215,6 +223,11 @@ class AuthService:
             expires_at=expires_at,
         )
         await engine.save(token)
+        logger.info(
+            "Generated customer OTP challenge for '%s' with purpose '%s'.",
+            normalized_mobile,
+            purpose.value,
+        )
 
         return OTPDispatchResult(
             mobile_number=normalized_mobile,

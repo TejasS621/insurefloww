@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from odmantic import AIOEngine
 
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.apis.schemas.requests.provider_sync_request import (
     ProviderWebhookPayload,
 )
@@ -26,6 +27,8 @@ from backend.main_backend.core.models.webhook_event_model import (
 
 from .service_exceptions import NotFoundServiceError
 
+logger = get_logger(__name__)
+
 
 class ProviderSyncService:
     """Process provider-originated payment and policy updates."""
@@ -45,6 +48,11 @@ class ProviderSyncService:
             processing_status=WebhookEventStatus.RECEIVED,
         )
         await engine.save(event)
+        logger.info(
+            "Received provider webhook '%s' for transaction '%s'.",
+            payload.event_type,
+            payload.transaction_reference,
+        )
 
         transaction = await engine.find_one(
             Transaction,
@@ -54,6 +62,11 @@ class ProviderSyncService:
             event.processing_status = WebhookEventStatus.FAILED
             event.processed_at = datetime.now(timezone.utc)
             await engine.save(event)
+            logger.warning(
+                "Provider webhook '%s' referenced unknown transaction '%s'.",
+                payload.event_type,
+                payload.transaction_reference,
+            )
             raise NotFoundServiceError("The webhook references an unknown transaction.")
 
         self._apply_transaction_update(transaction, payload)
@@ -72,6 +85,11 @@ class ProviderSyncService:
         event.processing_status = WebhookEventStatus.PROCESSED
         event.processed_at = datetime.now(timezone.utc)
         await engine.save(event)
+        logger.info(
+            "Processed provider webhook '%s' for transaction '%s'.",
+            payload.event_type,
+            payload.transaction_reference,
+        )
         return event
 
     @staticmethod

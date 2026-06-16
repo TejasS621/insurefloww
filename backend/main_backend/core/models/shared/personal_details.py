@@ -1,3 +1,5 @@
+"""Embedded applicant identity models for main-backend records."""
+
 from __future__ import annotations
 
 from datetime import datetime

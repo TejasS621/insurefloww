@@ -7,7 +7,10 @@ from pathlib import Path
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.models.policy_model import Policy
+
+logger = get_logger(__name__)
 
 
 class PolicyDocumentService:
@@ -54,6 +57,7 @@ class PolicyDocumentService:
         )
         pdf.showPage()
         pdf.save()
+        logger.info("Generated policy PDF for '%s' at '%s'.", policy.policy_number, output_path)
         return output_path.resolve()
 
 

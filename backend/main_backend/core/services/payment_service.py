@@ -9,6 +9,7 @@ import httpx
 from odmantic import AIOEngine
 
 from backend.main_backend.commons.config import settings
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.models.transaction_model import (
     PaymentStatus,
     PolicyStatus,
@@ -17,6 +18,8 @@ from backend.main_backend.core.models.transaction_model import (
 )
 
 from .service_exceptions import ConflictServiceError, IntegrationServiceError, NotFoundServiceError
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -70,6 +73,10 @@ class PaymentService:
                     },
                 )
         except httpx.HTTPError as exc:
+            logger.exception(
+                "Provider payment-session request failed for transaction '%s'.",
+                transaction_reference,
+            )
             raise IntegrationServiceError(
                 "Unable to reach the provider backend to create a payment session."
             ) from exc
@@ -82,6 +89,11 @@ class PaymentService:
             provider_message = response_payload.get(
                 "message",
                 "Provider backend rejected the payment session request.",
+            )
+            logger.warning(
+                "Provider rejected payment session for transaction '%s': %s",
+                transaction_reference,
+                provider_message,
             )
             raise IntegrationServiceError(provider_message)
 
@@ -103,6 +115,11 @@ class PaymentService:
             raise IntegrationServiceError(
                 "Provider backend returned an incomplete payment session payload."
             )
+        logger.info(
+            "Received provider-hosted payment session '%s' for transaction '%s'.",
+            payment_reference,
+            transaction_reference,
+        )
 
         return ProviderHostedPaymentSession(
             payment_reference=payment_reference,
@@ -139,6 +156,11 @@ class PaymentService:
         transaction.transaction_status = TransactionStatus.PAYMENT_PENDING
         transaction.updated_at = datetime.now(timezone.utc)
         await engine.save(transaction)
+        logger.info(
+            "Marked transaction '%s' as payment pending with provider payment '%s'.",
+            transaction_reference,
+            provider_payment_reference,
+        )
         return transaction
 
     async def mark_payment_result(
@@ -176,6 +198,11 @@ class PaymentService:
 
         transaction.updated_at = datetime.now(timezone.utc)
         await engine.save(transaction)
+        logger.info(
+            "Recorded payment result for transaction '%s' with success=%s.",
+            transaction_reference,
+            payment_succeeded,
+        )
         return transaction
 
 

@@ -1,3 +1,5 @@
+"""Audit-log persistence models for main-backend admin workflows."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

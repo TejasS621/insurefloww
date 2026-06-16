@@ -9,8 +9,8 @@ Returns:
     None: Route handlers return structured provider-sync responses.
 
 Raises:
-    HTTPException: Route handlers re-raise handled controller errors and
-    normalize unexpected failures through the shared route guard.
+    HTTPException: Unexpected failures are normalized through the shared
+    route guard before being returned to the caller.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from odmantic import AIOEngine
 
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import to_provider_sync_response
 from backend.main_backend.core.apis.routes.dependencies import (
@@ -34,11 +35,16 @@ from backend.main_backend.core.database.database import get_database
 from backend.main_backend.core.services.provider_sync_service import (
     provider_sync_service,
 )
+from backend.main_backend.core.services.service_exceptions import ServiceError
 
 provider_sync_router = APIRouter(prefix="/api/v1/provider-sync", tags=["Provider Sync"])
+logger = get_logger(__name__)
 
 
-@provider_sync_router.post("/webhook", response_model=APIResponse[ProviderWebhookSyncResponse])
+@provider_sync_router.post(
+    "/webhook",
+    response_model=APIResponse[ProviderWebhookSyncResponse],
+)
 @route_guard
 async def receive_provider_sync(
     request_data: ProviderWebhookPayload,
@@ -61,8 +67,17 @@ async def receive_provider_sync(
         HTTPException: Re-raises domain validation errors or wraps unexpected
         failures as HTTP 500 responses through the route guard.
     """
-    event = await provider_sync_service.process_provider_webhook(engine, request_data)
-    return APIResponse(
-        message="Provider webhook processed successfully.",
-        data=to_provider_sync_response(event),
-    )
+    try:
+        event = await provider_sync_service.process_provider_webhook(engine, request_data)
+        return APIResponse(
+            message="Provider webhook processed successfully.",
+            data=to_provider_sync_response(event),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to process provider webhook for transaction %s.",
+            request_data.transaction_reference,
+        )
+        raise

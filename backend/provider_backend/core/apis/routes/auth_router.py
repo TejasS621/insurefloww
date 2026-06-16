@@ -1,4 +1,18 @@
-﻿"""Authentication routes for the provider backend."""
+"""
+Handle authentication routes for the provider backend.
+
+Args:
+    None: This module defines provider-admin authentication handlers exposed
+    under the versioned auth router.
+
+Returns:
+    None: Route handlers return structured API responses containing signed
+    JWT payloads for provider-admin access.
+
+Raises:
+    HTTPException: Unexpected failures are normalized through the shared
+    route guard before being returned to the caller.
+"""
 
 from __future__ import annotations
 
@@ -9,14 +23,21 @@ from odmantic import AIOEngine
 
 from backend.provider_backend.commons.auth import create_access_token
 from backend.provider_backend.commons.config import settings
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.apis.routes._helpers import route_guard
-from backend.provider_backend.core.apis.schemas.requests.auth_request import ProviderAdminLoginRequest
-from backend.provider_backend.core.apis.schemas.responses.auth_response import ProviderAuthResponse
+from backend.provider_backend.core.apis.schemas.requests.auth_request import (
+    ProviderAdminLoginRequest,
+)
+from backend.provider_backend.core.apis.schemas.responses.auth_response import (
+    ProviderAuthResponse,
+)
 from backend.provider_backend.core.apis.schemas.responses.common_response import APIResponse
 from backend.provider_backend.core.database.database import get_database
 from backend.provider_backend.core.services.auth_service import provider_auth_service
+from backend.provider_backend.core.services.service_exceptions import ServiceError
 
 auth_router = APIRouter(prefix="/api/v1/auth", tags=["Provider Auth"])
+logger = get_logger(__name__)
 
 
 @auth_router.post("/login", response_model=APIResponse[ProviderAuthResponse])
@@ -25,23 +46,42 @@ async def provider_admin_login(
     request_data: ProviderAdminLoginRequest,
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[ProviderAuthResponse]:
-    """Authenticate a provider admin and return a signed JWT access token."""
-    provider_admin_identity = await provider_auth_service.authenticate_provider_admin(
-        engine,
-        email=request_data.email,
-        password=request_data.password,
-    )
-    access_token, expires_at = create_access_token(
-        subject=provider_admin_identity,
-        role="provider_admin",
-        expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
-    )
-    expires_in = int((expires_at - datetime.now(timezone.utc)).total_seconds())
-    return APIResponse(
-        message="Provider admin authenticated successfully.",
-        data=ProviderAuthResponse(
-            access_token=access_token,
-            expires_in_seconds=max(expires_in, 0),
-        ),
-    )
+    """
+    Authenticate a provider admin and return a signed JWT access token.
 
+    Args:
+        request_data: Validated provider-admin login payload.
+        engine: Active ODMantic database engine dependency.
+
+    Returns:
+        APIResponse[ProviderAuthResponse]: Provider-admin access token and
+        expiry metadata for authenticated provider operations.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses through the route guard.
+    """
+    try:
+        provider_admin_identity = await provider_auth_service.authenticate_provider_admin(
+            engine,
+            email=request_data.email,
+            password=request_data.password,
+        )
+        access_token, expires_at = create_access_token(
+            subject=provider_admin_identity,
+            role="provider_admin",
+            expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes),
+        )
+        expires_in = int((expires_at - datetime.now(timezone.utc)).total_seconds())
+        return APIResponse(
+            message="Provider admin authenticated successfully.",
+            data=ProviderAuthResponse(
+                access_token=access_token,
+                expires_in_seconds=max(expires_in, 0),
+            ),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to authenticate provider admin %s.", request_data.email)
+        raise

@@ -1,3 +1,5 @@
+"""Embedded health-detail models for main-backend application records."""
+
 from __future__ import annotations
 
 from odmantic import EmbeddedModel, Field
