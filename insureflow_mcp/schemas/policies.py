@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from insureflow_mcp.schemas.common import FileMetadata
 
@@ -12,7 +12,12 @@ class GetPolicyInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    policy_number: str
+    policy_number: str = Field(..., description="Policy number to fetch from the main backend.")
+    customer_access_token: str = Field(
+        ...,
+        min_length=20,
+        description="Customer JWT access token required by the authenticated policy endpoint.",
+    )
 
 
 class PolicyOutput(BaseModel):
@@ -36,7 +41,15 @@ class DownloadPolicyInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    policy_number: str
+    policy_number: str = Field(
+        ...,
+        description="Policy number whose PDF document should be downloaded.",
+    )
+    customer_access_token: str = Field(
+        ...,
+        min_length=20,
+        description="Customer JWT access token required by the authenticated policy download endpoint.",
+    )
 
 
 class DownloadPolicyOutput(FileMetadata):

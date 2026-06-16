@@ -106,8 +106,9 @@ def register_quote_tools(mcp_server: Any, tools: QuoteTools) -> None:
     @mcp_server.tool(
         name="generate_quote",
         description=(
-            "Create a new insurance application in InsureFlow and return generated quotes. "
-            "Use the exact application schema required by the main backend."
+            "Create a full InsureFlow application and return generated quotes. "
+            "Collect complete customer details, coverage details, and health details "
+            "for HEALTH insurance before calling this tool."
         ),
     )
     async def generate_quote(payload: GenerateQuoteInput) -> dict[str, Any]:

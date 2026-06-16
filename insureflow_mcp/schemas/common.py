@@ -12,19 +12,45 @@ class PersonalDetailsInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    first_name: str = Field(..., min_length=1)
-    last_name: str = Field(..., min_length=1)
-    email: EmailStr
-    mobile_number: str = Field(..., min_length=10, max_length=15)
-    date_of_birth: str = Field(..., description="Date of birth in ISO or DD/MM/YYYY format.")
-    gender: str = Field(..., description="MALE, FEMALE, or OTHER.")
-    address_line_1: str = Field(..., min_length=3)
-    address_line_2: str | None = None
-    city: str = Field(..., min_length=2)
-    state: str = Field(..., min_length=2)
-    pincode: str = Field(..., min_length=4, max_length=10)
-    gstin: str | None = None
-    politically_exposed_person: bool = False
+    first_name: str = Field(..., min_length=1, description="Customer first name.")
+    last_name: str = Field(..., min_length=1, description="Customer last name.")
+    email: EmailStr = Field(..., description="Customer email address.")
+    mobile_number: str = Field(
+        ...,
+        min_length=10,
+        max_length=15,
+        description="Customer mobile number used for the application.",
+    )
+    date_of_birth: str = Field(
+        ...,
+        description="Date of birth in YYYY-MM-DD or DD/MM/YYYY format.",
+    )
+    gender: str = Field(..., description="Customer gender: MALE, FEMALE, or OTHER.")
+    address_line_1: str = Field(
+        ...,
+        min_length=3,
+        description="Primary street address for the customer.",
+    )
+    address_line_2: str | None = Field(
+        default=None,
+        description="Optional secondary address line such as apartment or landmark.",
+    )
+    city: str = Field(..., min_length=2, description="Customer city.")
+    state: str = Field(..., min_length=2, description="Customer state.")
+    pincode: str = Field(
+        ...,
+        min_length=4,
+        max_length=10,
+        description="Customer postal or PIN code.",
+    )
+    gstin: str | None = Field(
+        default=None,
+        description="Optional GSTIN if the customer wants to provide it.",
+    )
+    politically_exposed_person: bool = Field(
+        default=False,
+        description="Whether the customer is a politically exposed person.",
+    )
 
 
 class HealthDetailsInput(BaseModel):
@@ -32,15 +58,42 @@ class HealthDetailsInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    height_cm: float | None = Field(default=None, ge=50, le=250)
-    weight_kg: float | None = Field(default=None, ge=10, le=300)
-    calculated_bmi: float | None = Field(default=None, ge=0, le=100)
-    smoker: bool = False
-    diabetes: bool = False
-    blood_pressure: bool = False
-    heart_ailments: bool = False
-    pre_existing_disease: bool = False
-    other_conditions: list[str] = Field(default_factory=list)
+    height_cm: float | None = Field(
+        default=None,
+        ge=50,
+        le=250,
+        description="Customer height in centimeters.",
+    )
+    weight_kg: float | None = Field(
+        default=None,
+        ge=10,
+        le=300,
+        description="Customer weight in kilograms.",
+    )
+    calculated_bmi: float | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="Optional BMI value if already calculated by the caller.",
+    )
+    smoker: bool = Field(default=False, description="Whether the customer is a smoker.")
+    diabetes: bool = Field(default=False, description="Whether the customer has diabetes.")
+    blood_pressure: bool = Field(
+        default=False,
+        description="Whether the customer has blood pressure history.",
+    )
+    heart_ailments: bool = Field(
+        default=False,
+        description="Whether the customer has heart-related ailments.",
+    )
+    pre_existing_disease: bool = Field(
+        default=False,
+        description="Whether the customer has any pre-existing disease.",
+    )
+    other_conditions: list[str] = Field(
+        default_factory=list,
+        description="Optional list of other medical conditions not covered by the boolean flags.",
+    )
 
 
 class CoverageDetailsInput(BaseModel):
@@ -48,13 +101,38 @@ class CoverageDetailsInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    insurance_type: str
-    coverage_amount: float = Field(..., gt=0)
-    sum_insured: float | None = Field(default=None, gt=0)
-    tenure_years: int | None = Field(default=None, ge=1)
-    relation: str | None = None
-    insured_members: int | None = Field(default=None, ge=1)
-    pan_india_cover: bool = True
+    insurance_type: str = Field(
+        ...,
+        description="Insurance type matching the top-level insurance_type field.",
+    )
+    coverage_amount: float = Field(
+        ...,
+        gt=0,
+        description="Requested coverage amount for the policy.",
+    )
+    sum_insured: float | None = Field(
+        default=None,
+        gt=0,
+        description="Optional sum insured amount if distinct from coverage amount.",
+    )
+    tenure_years: int | None = Field(
+        default=None,
+        ge=1,
+        description="Requested policy tenure in years.",
+    )
+    relation: str | None = Field(
+        default=None,
+        description="Relation grouping such as SELF, SPOUSE, CHILD, PARENT, or FAMILY.",
+    )
+    insured_members: int | None = Field(
+        default=None,
+        ge=1,
+        description="Number of insured members covered by the policy.",
+    )
+    pan_india_cover: bool = Field(
+        default=True,
+        description="Whether the requested coverage should apply across India.",
+    )
 
 
 class QuoteAddon(BaseModel):

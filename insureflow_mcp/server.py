@@ -16,9 +16,13 @@ from insureflow_mcp.core.config import MCPSettings, get_settings
 from insureflow_mcp.core.logging import configure_logging
 from insureflow_mcp.tools import (
     PaymentTools,
+    PolicyTools,
     QuoteTools,
+    TicketTools,
+    register_policy_tools,
     register_payment_tools,
     register_quote_tools,
+    register_ticket_tools,
 )
 
 
@@ -80,6 +84,8 @@ def create_server(settings: MCPSettings | None = None) -> FastMCP:
 
     register_quote_tools(server, QuoteTools(main_client=main_client))
     register_payment_tools(server, PaymentTools(main_client=main_client))
+    register_policy_tools(server, PolicyTools(settings=settings, main_client=main_client))
+    register_ticket_tools(server, TicketTools(main_client=main_client))
 
     @server.custom_route(settings.health_path, methods=["GET"], include_in_schema=False)
     async def health_check(request: Request) -> Response:
