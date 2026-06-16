@@ -1,8 +1,8 @@
-"""Request and response schemas for shared authentication helpers."""
+"""Request and response schemas for customer authentication helpers."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RequestCustomerOTPInput(BaseModel):
@@ -19,24 +19,6 @@ class VerifyCustomerOTPInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mobile_number: str = Field(..., min_length=10, max_length=15)
-    otp_code: str = Field(..., min_length=4, max_length=8)
-
-
-class AdminLoginInput(BaseModel):
-    """Input accepted by the admin credential-login helper."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    email: EmailStr
-    password: str = Field(..., min_length=8)
-
-
-class AdminVerifyInput(BaseModel):
-    """Input accepted by the admin OTP-verification helper."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    email: EmailStr
     otp_code: str = Field(..., min_length=4, max_length=8)
 
 
@@ -61,7 +43,7 @@ class TokenPayloadOutput(BaseModel):
 
 
 class AuthTokenOutput(BaseModel):
-    """Authentication result returned by verify and admin login helpers."""
+    """Authentication result returned by the customer OTP verification helper."""
 
     model_config = ConfigDict(extra="forbid")
 

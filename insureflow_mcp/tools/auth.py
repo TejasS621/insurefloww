@@ -9,8 +9,6 @@ from insureflow_mcp.core.auth_session import AuthSessionStore
 from insureflow_mcp.core.errors import BackendRequestError, MCPToolError
 from insureflow_mcp.core.results import ToolResult, error_result, success_result
 from insureflow_mcp.schemas.auth import (
-    AdminLoginInput,
-    AdminVerifyInput,
     AuthTokenOutput,
     OTPDispatchOutput,
     RequestCustomerOTPInput,
@@ -53,34 +51,6 @@ class AuthTools:
         except MCPToolError as exc:
             return error_result(exc)
 
-    async def admin_login(self, payload: AdminLoginInput) -> ToolResult[AuthTokenOutput]:
-        """Call the admin credential-login endpoint and persist the returned token."""
-
-        try:
-            response = await self.main_client.admin_login(payload.model_dump(mode="json"))
-            result = self._parse_auth_token_response(
-                response,
-                malformed_message="Main backend returned a malformed admin login response.",
-            )
-            self.auth_session.set_admin_token(result.token.access_token)
-            return success_result("Admin authentication successful.", result)
-        except MCPToolError as exc:
-            return error_result(exc)
-
-    async def admin_verify(self, payload: AdminVerifyInput) -> ToolResult[AuthTokenOutput]:
-        """Call the admin OTP-verification endpoint and persist the returned token."""
-
-        try:
-            response = await self.main_client.admin_verify(payload.model_dump(mode="json"))
-            result = self._parse_auth_token_response(
-                response,
-                malformed_message="Main backend returned a malformed admin verify response.",
-            )
-            self.auth_session.set_admin_token(result.token.access_token)
-            return success_result("Admin verification successful.", result)
-        except MCPToolError as exc:
-            return error_result(exc)
-
     @staticmethod
     def _parse_auth_token_response(
         response: dict[str, Any],
@@ -103,8 +73,8 @@ class AuthTools:
         )
 
 
-def register_auth_tools(mcp_server: Any, tools: AuthTools) -> None:
-    """Register auth helpers on an MCP server when an integration needs them."""
+def register_customer_auth_tools(mcp_server: Any, tools: AuthTools) -> None:
+    """Register only customer auth helpers on a public-facing MCP server."""
 
     @mcp_server.tool(name="request_customer_otp", description="Request a customer login OTP.")
     async def request_customer_otp(payload: RequestCustomerOTPInput) -> dict[str, Any]:
@@ -117,15 +87,3 @@ def register_auth_tools(mcp_server: Any, tools: AuthTools) -> None:
         """Verify a customer OTP and persist the customer bearer token."""
 
         return (await tools.verify_customer_otp(payload)).model_dump(mode="json")
-
-    @mcp_server.tool(name="admin_login", description="Authenticate an admin with email and password.")
-    async def admin_login(payload: AdminLoginInput) -> dict[str, Any]:
-        """Authenticate an admin and persist the admin bearer token."""
-
-        return (await tools.admin_login(payload)).model_dump(mode="json")
-
-    @mcp_server.tool(name="admin_verify", description="Verify the admin OTP flow.")
-    async def admin_verify(payload: AdminVerifyInput) -> dict[str, Any]:
-        """Verify an admin OTP and persist the admin bearer token."""
-
-        return (await tools.admin_verify(payload)).model_dump(mode="json")

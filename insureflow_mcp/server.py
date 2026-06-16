@@ -21,7 +21,7 @@ from insureflow_mcp.tools import (
     PolicyTools,
     QuoteTools,
     TicketTools,
-    register_auth_tools,
+    register_customer_auth_tools,
     register_policy_tools,
     register_payment_tools,
     register_quote_tools,
@@ -89,7 +89,7 @@ def create_server(settings: MCPSettings | None = None) -> FastMCP:
         ),
     )
 
-    register_auth_tools(
+    register_customer_auth_tools(
         server,
         AuthTools(main_client=main_client, auth_session=auth_session),
     )

@@ -1,6 +1,6 @@
 """Tool registration helpers for the InsureFlow MCP server."""
 
-from .auth import AuthTools, register_auth_tools
+from .auth import AuthTools, register_customer_auth_tools
 from .policies import PolicyTools, register_policy_tools
 from .payments import PaymentTools, register_payment_tools
 from .quotes import QuoteTools, register_quote_tools
@@ -12,7 +12,7 @@ __all__ = [
     "PaymentTools",
     "QuoteTools",
     "TicketTools",
-    "register_auth_tools",
+    "register_customer_auth_tools",
     "register_policy_tools",
     "register_payment_tools",
     "register_quote_tools",
