@@ -64,6 +64,8 @@ Optional voice bot tuning variables:
 
 ## Install
 
+Use Python 3.12 for the local WebRTC voice flow.
+
 ```powershell
 pip install -r voice_bot/requirements.txt
 ```
@@ -77,6 +79,8 @@ Use the provided PowerShell helper from the repo root:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start-voice-bot.ps1
 ```
+
+The helper script now prefers `.\.venv312` when it exists, then falls back to `.\venv`.
 
 You can also pass Pipecat runner arguments through the script:
 
@@ -98,3 +102,4 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-voice-bot.ps1 --transpo
 
 - Customer authentication is session-based in memory. Once OTP verification succeeds, later authenticated tools in the same bot process can reuse that token, so the caller does not need to provide raw JWT values.
 - This package intentionally avoids direct backend business logic. If a workflow changes, update the main backend or `insureflow_mcp` layer first.
+- The browser-based WebRTC path depends on the local Pipecat client/runtime handshake. If the UI connects but audio does not flow, fully restart the bot, use a fresh browser session, and make sure the script is running against the Python 3.12 environment.

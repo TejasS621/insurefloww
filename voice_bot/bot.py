@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -14,7 +15,10 @@ from voice_bot.runtime import VoiceBotRuntime
 
 try:
     from pipecat.audio.vad.silero import SileroVADAnalyzer
-    from pipecat.frames.frames import LLMRunFrame, TTSSpeakFrame
+    from pipecat.frames.frames import (
+        LLMRunFrame,
+        TTSSpeakFrame,
+    )
     from pipecat.pipeline.pipeline import Pipeline
     from pipecat.pipeline.worker import PipelineParams, PipelineWorker
     from pipecat.processors.aggregators.llm_context import LLMContext
@@ -82,6 +86,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
     runtime = VoiceBotRuntime.build()
     settings = get_voice_bot_settings()
     definitions = build_voice_tool_definitions(runtime)
+    greeting_sent = False
 
     logger.info("starting voice bot")
 
@@ -130,15 +135,67 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
         idle_timeout_secs=runner_args.pipeline_idle_timeout_secs,
     )
 
+    async def reconcile_smallwebrtc_client() -> None:
+        """Recover SmallWebRTC sessions that connected before transport setup finished."""
+
+        client = getattr(transport, "_client", None)
+        if client is None:
+            return
+
+        if not getattr(client, "is_connected", False):
+            return
+
+        if getattr(client, "_params", None) is None:
+            return
+
+        if (
+            getattr(client, "_audio_input_track", None) is None
+            and getattr(client, "_audio_output_track", None) is None
+        ):
+            logger.info("reconciling early SmallWebRTC connection after pipeline startup")
+            await client._handle_client_connected()
+            capture_audio = getattr(transport, "capture_participant_audio", None)
+            if callable(capture_audio):
+                await capture_audio()
+
+    async def retry_smallwebrtc_attachment() -> None:
+        """Retry SmallWebRTC track attachment for a short window after connect."""
+
+        for _ in range(8):
+            await asyncio.sleep(0.5)
+            await reconcile_smallwebrtc_client()
+
+    @worker.event_handler("on_pipeline_started")
+    async def on_pipeline_started(worker: object, frame: object) -> None:
+        """Ensure SmallWebRTC tracks are attached after the pipeline is ready."""
+
+        del worker, frame
+        await reconcile_smallwebrtc_client()
+
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport: BaseTransport, client: object) -> None:
-        """Seed the initial greeting when a new caller connects."""
+        """Log the transport-level connection event for debugging."""
 
         del transport, client
         logger.info("voice client connected")
+        await reconcile_smallwebrtc_client()
+        asyncio.create_task(retry_smallwebrtc_attachment())
+
+    @worker.rtvi.event_handler("on_client_ready")
+    async def on_client_ready(rtvi: object) -> None:
+        """Send the initial greeting only after the RTVI client is ready."""
+
+        nonlocal greeting_sent
+        del rtvi
+        if greeting_sent:
+            return
+
+        greeting_sent = True
+        logger.info("voice client ready for audio")
+        await asyncio.sleep(0.75)
         context.add_message({"role": "developer", "content": settings.initial_prompt})
+        context.add_message({"role": "assistant", "content": settings.greeting_message})
         await tts.queue_frame(TTSSpeakFrame(settings.greeting_message))
-        await worker.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport: BaseTransport, client: object) -> None:
@@ -146,6 +203,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
 
         del transport, client
         logger.info("voice client disconnected")
+        greeting_sent = False
         await worker.cancel()
 
     runner = WorkerRunner(handle_sigint=runner_args.handle_sigint)

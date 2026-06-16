@@ -1,4 +1,4 @@
-pipecat-ai[runner,webrtc,cartesia,deepgram,groq,silero]>=1.3.0
+pipecat-ai[runner,webrtc,cartesia,deepgram,groq,silero]==1.3.0
 httpx==0.28.1
 pydantic==2.13.4
 pydantic-settings==2.2.1

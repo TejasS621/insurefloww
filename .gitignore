@@ -9,10 +9,12 @@
 # Virtual environments
 venv/
 .venv/
+.venv312/
 env/
 ENV/
 **/venv/
 **/.venv/
+**/.venv312/
 **/env/
 **/ENV/
 
@@ -59,4 +61,9 @@ storage/
 # Frontend
 frontend/node_modules/
 frontend/dist/
+admin-frontend/node_modules/
+admin-frontend/node_modules/.vite/
+admin-frontend/dist/
+admin-frontend/.vite/
+admin-frontend/*.tsbuildinfo
 *.tsbuildinfo
