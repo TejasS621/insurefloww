@@ -1,11 +1,10 @@
-"""Shared ticket tool adapters used outside the public MCP tool list."""
+"""Ticket tool adapters exposed by the MCP server and reused by other integrations."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from insureflow_mcp.clients.main_backend_client import MainBackendClient
-from insureflow_mcp.core.auth_session import AuthSessionStore
 from insureflow_mcp.core.errors import BackendRequestError, MCPToolError
 from insureflow_mcp.core.results import ToolResult, error_result, success_result
 from insureflow_mcp.schemas.common import extract_api_data
@@ -13,10 +12,9 @@ from insureflow_mcp.schemas.tickets import CreateTicketInput, TicketOutput
 
 
 class TicketTools:
-    """Thin ticket adapters reused by integrations like the voice bot."""
+    """Thin ticket adapters exposed by the MCP server."""
 
-    def __init__(self, *, auth_session: AuthSessionStore, main_client: MainBackendClient) -> None:
-        self.auth_session = auth_session
+    def __init__(self, *, main_client: MainBackendClient) -> None:
         self.main_client = main_client
 
     async def create_ticket(self, payload: CreateTicketInput) -> ToolResult[TicketOutput]:
@@ -24,8 +22,8 @@ class TicketTools:
 
         try:
             response = await self.main_client.create_ticket(
-                payload.model_dump(exclude_none=True),
-                self.auth_session.get_customer_token(),
+                payload.model_dump(exclude={"customer_access_token"}, exclude_none=True),
+                payload.customer_access_token,
             )
             data = extract_api_data(response)
             if not isinstance(data, dict):
@@ -54,9 +52,15 @@ class TicketTools:
 
 
 def register_ticket_tools(mcp_server: Any, tools: TicketTools) -> None:
-    """Register ticket helpers on an MCP server when an integration needs them."""
+    """Register ticket helpers on the active MCP server."""
 
-    @mcp_server.tool(name="create_ticket", description="Create a customer support ticket.")
+    @mcp_server.tool(
+        name="create_ticket",
+        description=(
+            "Create a customer support ticket. "
+            "Requires a customer JWT access token because the backend ticket route is authenticated."
+        ),
+    )
     async def create_ticket(payload: CreateTicketInput) -> dict[str, Any]:
         """Create a support ticket for the caller."""
 

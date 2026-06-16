@@ -12,12 +12,34 @@ class GenerateQuoteInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    insurance_type: str = Field(..., description="HEALTH, LIFE, VEHICLE, TRAVEL, or HOME.")
-    guest_identifier: str | None = None
-    personal_details: PersonalDetailsInput
-    coverage_details: CoverageDetailsInput
-    health_details: HealthDetailsInput | None = None
-    idempotency_key: str | None = Field(default=None, min_length=8, max_length=128)
+    insurance_type: str = Field(
+        ...,
+        description=(
+            "Insurance type for the application. Use HEALTH, LIFE, VEHICLE, TRAVEL, or HOME."
+        ),
+    )
+    guest_identifier: str | None = Field(
+        default=None,
+        description="Optional guest identifier if the caller already tracks anonymous users.",
+    )
+    personal_details: PersonalDetailsInput = Field(
+        ...,
+        description="Full customer identity, contact, and address details for the application.",
+    )
+    coverage_details: CoverageDetailsInput = Field(
+        ...,
+        description="Coverage preferences such as amount, tenure, relation, and insured members.",
+    )
+    health_details: HealthDetailsInput | None = Field(
+        default=None,
+        description="Health underwriting details required when insurance_type is HEALTH.",
+    )
+    idempotency_key: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=128,
+        description="Optional idempotency key to prevent accidental duplicate application creation.",
+    )
 
     @model_validator(mode="after")
     def ensure_health_details_for_health(self) -> "GenerateQuoteInput":

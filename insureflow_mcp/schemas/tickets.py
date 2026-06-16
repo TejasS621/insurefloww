@@ -10,11 +10,35 @@ class CreateTicketInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    transaction_reference: str | None = None
-    category: str = "GENERAL"
-    priority: str = "MEDIUM"
-    subject: str = Field(..., min_length=3, max_length=120)
-    message: str = Field(..., min_length=5, max_length=4000)
+    customer_access_token: str = Field(
+        ...,
+        min_length=20,
+        description="Customer JWT access token required by the authenticated ticket endpoint.",
+    )
+    transaction_reference: str | None = Field(
+        default=None,
+        description="Optional transaction reference if the support ticket is tied to a policy journey.",
+    )
+    category: str = Field(
+        default="GENERAL",
+        description="Ticket category such as CLAIM, PAYMENT, POLICY, or GENERAL.",
+    )
+    priority: str = Field(
+        default="MEDIUM",
+        description="Ticket priority such as LOW, MEDIUM, or HIGH.",
+    )
+    subject: str = Field(
+        ...,
+        min_length=3,
+        max_length=120,
+        description="Short subject summarizing the support request.",
+    )
+    message: str = Field(
+        ...,
+        min_length=5,
+        max_length=4000,
+        description="Detailed customer message describing the support issue.",
+    )
 
 
 class TicketOutput(BaseModel):

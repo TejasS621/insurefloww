@@ -16,8 +16,13 @@ It does not implement quote generation, underwriting, payment processing, or any
 - `select_quote`
 - `initiate_payment`
 - `get_payment_status`
+- `get_policy`
+- `download_policy`
+- `create_ticket`
 
-These are the only tools kept because they map directly to public customer-flow backend routes without requiring a login-only session inside the MCP.
+These tools stay thin and map directly to existing InsureFlow backend routes.
+Some post-purchase tools still require a valid customer JWT because the backend
+policy and ticket routes are authenticated.
 
 ## Package Layout
 

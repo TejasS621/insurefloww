@@ -1,4 +1,4 @@
-"""Shared policy tool adapters used outside the public MCP tool list."""
+"""Policy tool adapters exposed by the MCP server and reused by other integrations."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from insureflow_mcp.clients.main_backend_client import MainBackendClient
-from insureflow_mcp.core.auth_session import AuthSessionStore
 from insureflow_mcp.core.config import MCPSettings
 from insureflow_mcp.core.errors import BackendRequestError, MCPToolError
 from insureflow_mcp.core.results import ToolResult, error_result, success_result
@@ -15,11 +14,10 @@ from insureflow_mcp.schemas.policies import DownloadPolicyInput, DownloadPolicyO
 
 
 class PolicyTools:
-    """Thin policy adapters reused by integrations like the voice bot."""
+    """Thin policy adapters exposed by the MCP server."""
 
-    def __init__(self, *, settings: MCPSettings, auth_session: AuthSessionStore, main_client: MainBackendClient) -> None:
+    def __init__(self, *, settings: MCPSettings, main_client: MainBackendClient) -> None:
         self.settings = settings
-        self.auth_session = auth_session
         self.main_client = main_client
 
     async def get_policy(self, payload: GetPolicyInput) -> ToolResult[PolicyOutput]:
@@ -28,7 +26,7 @@ class PolicyTools:
         try:
             response = await self.main_client.get_policy(
                 payload.policy_number,
-                self.auth_session.get_customer_token(),
+                payload.customer_access_token,
             )
             data = extract_api_data(response)
             if not isinstance(data, dict):
@@ -55,7 +53,7 @@ class PolicyTools:
             destination = Path(self.settings.download_directory) / f"{payload.policy_number}.pdf"
             file_path = await self.main_client.download_policy(
                 payload.policy_number,
-                token=self.auth_session.get_customer_token(),
+                token=payload.customer_access_token,
                 destination=destination,
             )
             result = DownloadPolicyOutput(
@@ -68,15 +66,27 @@ class PolicyTools:
 
 
 def register_policy_tools(mcp_server: Any, tools: PolicyTools) -> None:
-    """Register policy helpers on an MCP server when an integration needs them."""
+    """Register policy helpers on the active MCP server."""
 
-    @mcp_server.tool(name="get_policy", description="Retrieve customer policy details by policy number.")
+    @mcp_server.tool(
+        name="get_policy",
+        description=(
+            "Retrieve customer policy details by policy number. "
+            "Requires a customer JWT access token because the backend policy route is authenticated."
+        ),
+    )
     async def get_policy(payload: GetPolicyInput) -> dict[str, Any]:
         """Fetch policy details for the caller."""
 
         return (await tools.get_policy(payload)).model_dump(mode="json")
 
-    @mcp_server.tool(name="download_policy", description="Download a customer policy PDF.")
+    @mcp_server.tool(
+        name="download_policy",
+        description=(
+            "Download a customer policy PDF. "
+            "Requires a customer JWT access token because the backend download route is authenticated."
+        ),
+    )
     async def download_policy(payload: DownloadPolicyInput) -> dict[str, Any]:
         """Download a customer policy PDF and return the saved file reference."""
 
