@@ -6,12 +6,12 @@ import json
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from insureflow_mcp.core.results import ToolResult
 from insureflow_mcp.schemas.auth import RequestCustomerOTPInput, VerifyCustomerOTPInput
 from insureflow_mcp.schemas.payments import GetPaymentStatusInput, InitiatePaymentInput
-from insureflow_mcp.schemas.policies import GetPolicyInput
+from insureflow_mcp.schemas.policies import DownloadPolicyInput, GetPolicyInput
 from insureflow_mcp.schemas.quotes import GenerateQuoteInput, SelectQuoteInput
 from insureflow_mcp.schemas.tickets import CreateTicketInput
 from voice_bot.runtime import VoiceBotRuntime
@@ -27,6 +27,59 @@ except ImportError as exc:  # pragma: no cover - runtime dependency guard
 
 
 ToolHandler = Callable[[BaseModel], Awaitable[ToolResult[Any]]]
+
+
+class VoiceGetPolicyInput(BaseModel):
+    """Policy lookup input that hides JWT session details from the caller."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy_number: str = Field(
+        ...,
+        description="Policy number to fetch from InsureFlow for the authenticated customer.",
+    )
+
+
+class VoiceDownloadPolicyInput(BaseModel):
+    """Policy-download input that hides JWT session details from the caller."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy_number: str = Field(
+        ...,
+        description="Policy number whose PDF should be downloaded for the authenticated customer.",
+    )
+
+
+class VoiceCreateTicketInput(BaseModel):
+    """Ticket-creation input that hides JWT session details from the caller."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    transaction_reference: str | None = Field(
+        default=None,
+        description="Optional transaction reference if the support issue is tied to a specific purchase journey.",
+    )
+    category: str = Field(
+        default="GENERAL",
+        description="Ticket category such as CLAIM, PAYMENT, POLICY, or GENERAL.",
+    )
+    priority: str = Field(
+        default="MEDIUM",
+        description="Ticket priority such as LOW, MEDIUM, or HIGH.",
+    )
+    subject: str = Field(
+        ...,
+        min_length=3,
+        max_length=120,
+        description="Short subject that summarizes the support request.",
+    )
+    message: str = Field(
+        ...,
+        min_length=5,
+        max_length=4000,
+        description="Detailed support message describing what the customer needs help with.",
+    )
 
 
 @dataclass(slots=True)
@@ -95,15 +148,49 @@ def build_voice_tool_definitions(runtime: VoiceBotRuntime) -> list[VoiceToolDefi
         ),
         VoiceToolDefinition(
             name="get_policy",
-            description="Fetch policy details for an authenticated customer by policy number.",
-            input_model=GetPolicyInput,
-            handler=runtime.policy_tools.get_policy,
+            description=(
+                "Fetch policy details for the customer currently authenticated in this voice session. "
+                "Do not ask the customer for a token."
+            ),
+            input_model=VoiceGetPolicyInput,
+            handler=lambda payload: runtime.get_policy_with_session(
+                GetPolicyInput(
+                    policy_number=payload.policy_number,
+                    customer_access_token="session",
+                )
+            ),
+        ),
+        VoiceToolDefinition(
+            name="download_policy",
+            description=(
+                "Download a policy PDF for the customer currently authenticated in this voice session. "
+                "Do not ask the customer for a token."
+            ),
+            input_model=VoiceDownloadPolicyInput,
+            handler=lambda payload: runtime.download_policy_with_session(
+                DownloadPolicyInput(
+                    policy_number=payload.policy_number,
+                    customer_access_token="session",
+                )
+            ),
         ),
         VoiceToolDefinition(
             name="create_ticket",
-            description="Create a customer support ticket for policy, payment, claim, or general help.",
-            input_model=CreateTicketInput,
-            handler=runtime.ticket_tools.create_ticket,
+            description=(
+                "Create a customer support ticket for policy, payment, claim, or general help "
+                "for the customer currently authenticated in this voice session."
+            ),
+            input_model=VoiceCreateTicketInput,
+            handler=lambda payload: runtime.create_ticket_with_session(
+                CreateTicketInput(
+                    customer_access_token="session",
+                    transaction_reference=payload.transaction_reference,
+                    category=payload.category,
+                    priority=payload.priority,
+                    subject=payload.subject,
+                    message=payload.message,
+                )
+            ),
         ),
     ]
 
