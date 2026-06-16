@@ -4,7 +4,7 @@ This package adds a Pipecat-based voice assistant for InsureFlow customer workfl
 
 - Pipecat for the real-time voice pipeline
 - Deepgram for speech-to-text
-- OpenAI for reasoning and tool selection
+- Groq for reasoning and tool selection
 - Cartesia for text-to-speech
 - Existing `insureflow_mcp` tools as the orchestration layer
 
@@ -19,6 +19,7 @@ The voice bot does not implement underwriting, quote pricing, payment processing
 - Initiate payment
 - Check payment status
 - Get policy details
+- Download a policy document
 - Create support ticket
 
 ## Folder Overview
@@ -87,13 +88,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-voice-bot.ps1 --transpo
 
 1. Pipecat receives audio from the selected transport.
 2. Deepgram converts speech into text.
-3. OpenAI decides whether it can answer directly or should call a tool.
+3. Groq decides whether it can answer directly or should call a tool.
 4. Tool calls are routed into the existing `insureflow_mcp` tool classes.
 5. Those tools call the real InsureFlow backend APIs.
-6. The result is returned to OpenAI.
+6. The result is returned to Groq.
 7. Cartesia speaks the final natural-language response back to the caller.
 
 ## Notes
 
-- Customer authentication is session-based in memory. Once OTP verification succeeds, later authenticated tools in the same bot process can reuse that token.
+- Customer authentication is session-based in memory. Once OTP verification succeeds, later authenticated tools in the same bot process can reuse that token, so the caller does not need to provide raw JWT values.
 - This package intentionally avoids direct backend business logic. If a workflow changes, update the main backend or `insureflow_mcp` layer first.
