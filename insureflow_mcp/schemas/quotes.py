@@ -10,7 +10,16 @@ from insureflow_mcp.schemas.common import CoverageDetailsInput, HealthDetailsInp
 class GenerateQuoteInput(BaseModel):
     """Input accepted by the quote-generation MCP tool."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "description": (
+                "Use this tool to create a complete insurance application and generate quotes. "
+                "For HEALTH insurance, collect full customer identity details, contact details, "
+                "address, coverage preferences, and detailed health underwriting inputs before calling."
+            )
+        },
+    )
 
     insurance_type: str = Field(
         ...,
@@ -32,7 +41,11 @@ class GenerateQuoteInput(BaseModel):
     )
     health_details: HealthDetailsInput | None = Field(
         default=None,
-        description="Health underwriting details required when insurance_type is HEALTH.",
+        description=(
+            "Health underwriting details required when insurance_type is HEALTH. "
+            "Ask about height, weight, smoker status, diabetes, blood pressure history, "
+            "heart ailments, pre-existing disease, and any other medical conditions."
+        ),
     )
     idempotency_key: str | None = Field(
         default=None,

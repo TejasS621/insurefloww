@@ -6,8 +6,13 @@ from pathlib import Path
 from typing import Any
 
 from insureflow_mcp.clients.main_backend_client import MainBackendClient
+from insureflow_mcp.core.auth_session import AuthSessionStore
 from insureflow_mcp.core.config import MCPSettings
-from insureflow_mcp.core.errors import BackendRequestError, MCPToolError
+from insureflow_mcp.core.errors import (
+    AuthenticationRequiredError,
+    BackendRequestError,
+    MCPToolError,
+)
 from insureflow_mcp.core.results import ToolResult, error_result, success_result
 from insureflow_mcp.schemas.common import extract_api_data
 from insureflow_mcp.schemas.policies import DownloadPolicyInput, DownloadPolicyOutput, GetPolicyInput, PolicyOutput
@@ -16,8 +21,15 @@ from insureflow_mcp.schemas.policies import DownloadPolicyInput, DownloadPolicyO
 class PolicyTools:
     """Thin policy adapters exposed by the MCP server."""
 
-    def __init__(self, *, settings: MCPSettings, main_client: MainBackendClient) -> None:
+    def __init__(
+        self,
+        *,
+        settings: MCPSettings,
+        auth_session: AuthSessionStore,
+        main_client: MainBackendClient,
+    ) -> None:
         self.settings = settings
+        self.auth_session = auth_session
         self.main_client = main_client
 
     async def get_policy(self, payload: GetPolicyInput) -> ToolResult[PolicyOutput]:
@@ -26,7 +38,7 @@ class PolicyTools:
         try:
             response = await self.main_client.get_policy(
                 payload.policy_number,
-                payload.customer_access_token,
+                self._resolve_customer_token(payload.customer_access_token),
             )
             data = extract_api_data(response)
             if not isinstance(data, dict):
@@ -53,7 +65,7 @@ class PolicyTools:
             destination = Path(self.settings.download_directory) / f"{payload.policy_number}.pdf"
             file_path = await self.main_client.download_policy(
                 payload.policy_number,
-                token=payload.customer_access_token,
+                token=self._resolve_customer_token(payload.customer_access_token),
                 destination=destination,
             )
             result = DownloadPolicyOutput(
@@ -64,6 +76,19 @@ class PolicyTools:
         except MCPToolError as exc:
             return error_result(exc)
 
+    def _resolve_customer_token(self, explicit_token: str | None) -> str:
+        """Return an explicit token when provided, otherwise use the stored customer session."""
+
+        if explicit_token:
+            return explicit_token
+        try:
+            return self.auth_session.get_customer_token()
+        except AuthenticationRequiredError as exc:
+            raise AuthenticationRequiredError(
+                "Customer authentication is required before policy tools can be used. "
+                "Use a stored MCP customer session or provide a customer access token."
+            ) from exc
+
 
 def register_policy_tools(mcp_server: Any, tools: PolicyTools) -> None:
     """Register policy helpers on the active MCP server."""
@@ -72,7 +97,7 @@ def register_policy_tools(mcp_server: Any, tools: PolicyTools) -> None:
         name="get_policy",
         description=(
             "Retrieve customer policy details by policy number. "
-            "Requires a customer JWT access token because the backend policy route is authenticated."
+            "Uses the current customer session when available, or accepts a customer JWT access token as a fallback."
         ),
     )
     async def get_policy(payload: GetPolicyInput) -> dict[str, Any]:
@@ -84,7 +109,7 @@ def register_policy_tools(mcp_server: Any, tools: PolicyTools) -> None:
         name="download_policy",
         description=(
             "Download a customer policy PDF. "
-            "Requires a customer JWT access token because the backend download route is authenticated."
+            "Uses the current customer session when available, or accepts a customer JWT access token as a fallback."
         ),
     )
     async def download_policy(payload: DownloadPolicyInput) -> dict[str, Any]:
