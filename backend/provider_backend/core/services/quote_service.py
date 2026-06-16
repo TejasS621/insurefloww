@@ -21,6 +21,7 @@ from datetime import datetime, time, timedelta, timezone
 
 from odmantic import AIOEngine
 
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.apis.schemas.requests.provider_quote_request import (
     ProviderQuoteCreateRequest,
 )
@@ -47,6 +48,8 @@ from backend.provider_backend.core.models.shared import (
 
 from .premium_engine import premium_engine
 from .risk_engine import risk_engine
+
+logger = get_logger(__name__)
 
 
 class ProviderQuoteService:
@@ -191,6 +194,11 @@ class ProviderQuoteService:
         )
         provider_transaction.updated_at = datetime.now(timezone.utc)
         await engine.save(provider_transaction)
+        logger.info(
+            "Generated %s provider quote(s) for main transaction '%s'.",
+            len(stored_quotes),
+            request_data.main_transaction_reference,
+        )
         return stored_quotes
 
     async def _get_or_create_provider_transaction(

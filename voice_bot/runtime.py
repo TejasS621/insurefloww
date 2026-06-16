@@ -47,8 +47,8 @@ class VoiceBotRuntime:
             auth_tools=AuthTools(main_client=main_client, auth_session=auth_session),
             quote_tools=QuoteTools(main_client=main_client),
             payment_tools=PaymentTools(main_client=main_client),
-            policy_tools=PolicyTools(settings=mcp_settings, main_client=main_client),
-            ticket_tools=TicketTools(main_client=main_client),
+            policy_tools=PolicyTools(settings=mcp_settings, auth_session=auth_session, main_client=main_client),
+            ticket_tools=TicketTools(auth_session=auth_session, main_client=main_client),
         )
 
     async def get_policy_with_session(self, payload: GetPolicyInput) -> object:

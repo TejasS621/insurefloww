@@ -9,8 +9,8 @@ Returns:
     None: Route handlers return structured policy responses or PDF files.
 
 Raises:
-    HTTPException: Route handlers re-raise handled controller errors and
-    normalize unexpected failures through the shared route guard.
+    HTTPException: Unexpected failures are normalized through the shared
+    route guard before being returned to the caller.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 from odmantic import AIOEngine
 
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import to_policy_summary_response
 from backend.main_backend.core.apis.routes.dependencies import get_current_user_id
@@ -34,10 +35,12 @@ from backend.main_backend.core.models.application_model import Application
 from backend.main_backend.core.services.service_exceptions import (
     AuthorizationServiceError,
     NotFoundServiceError,
+    ServiceError,
 )
 from backend.provider_backend.core.models.policy_model import Policy
 
 policy_router = APIRouter(prefix="/api/v1/policies", tags=["Policies"])
+logger = get_logger(__name__)
 
 
 @policy_router.get("/me", response_model=APIResponse[list[PolicySummaryResponse]])
@@ -61,22 +64,28 @@ async def list_my_policies(
         HTTPException: Re-raises domain validation errors or wraps unexpected
         failures as HTTP 500 responses through the route guard.
     """
-    applications = await engine.find(Application, Application.user_id == user_id)
-    transaction_references = {
-        application.transaction_reference
-        for application in applications
-        if application.transaction_reference
-    }
-    policies = await engine.find(Policy)
-    matched_policies = [
-        to_policy_summary_response(policy)
-        for policy in policies
-        if policy.main_transaction_reference in transaction_references
-    ]
-    return APIResponse(
-        message="Policies fetched successfully.",
-        data=matched_policies,
-    )
+    try:
+        applications = await engine.find(Application, Application.user_id == user_id)
+        transaction_references = {
+            application.transaction_reference
+            for application in applications
+            if application.transaction_reference
+        }
+        policies = await engine.find(Policy)
+        matched_policies = [
+            to_policy_summary_response(policy)
+            for policy in policies
+            if policy.main_transaction_reference in transaction_references
+        ]
+        return APIResponse(
+            message="Policies fetched successfully.",
+            data=matched_policies,
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to list customer policies for %s.", user_id)
+        raise
 
 
 @policy_router.get("/{policy_number}", response_model=APIResponse[PolicySummaryResponse])
@@ -101,14 +110,20 @@ async def get_policy(
         HTTPException: Re-raises domain validation errors or wraps unexpected
         failures as HTTP 500 responses through the route guard.
     """
-    policy = await engine.find_one(Policy, Policy.policy_number == policy_number)
-    if policy is None:
-        raise NotFoundServiceError("The requested policy could not be found.")
-    await _ensure_policy_owner(engine, policy.main_transaction_reference, user_id)
-    return APIResponse(
-        message="Policy fetched successfully.",
-        data=to_policy_summary_response(policy),
-    )
+    try:
+        policy = await engine.find_one(Policy, Policy.policy_number == policy_number)
+        if policy is None:
+            raise NotFoundServiceError("The requested policy could not be found.")
+        await _ensure_policy_owner(engine, policy.main_transaction_reference, user_id)
+        return APIResponse(
+            message="Policy fetched successfully.",
+            data=to_policy_summary_response(policy),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to fetch policy %s.", policy_number)
+        raise
 
 
 @policy_router.get("/{policy_number}/view", response_class=FileResponse)
@@ -133,23 +148,29 @@ async def view_policy_document(
         HTTPException: Re-raises domain validation errors or wraps unexpected
         failures as HTTP 500 responses through the route guard.
     """
-    policy = await engine.find_one(Policy, Policy.policy_number == policy_number)
-    if policy is None:
-        raise NotFoundServiceError("The requested policy could not be found.")
-    await _ensure_policy_owner(engine, policy.main_transaction_reference, user_id)
-    if not policy.policy_pdf_path:
-        raise NotFoundServiceError("The requested policy document is not available.")
+    try:
+        policy = await engine.find_one(Policy, Policy.policy_number == policy_number)
+        if policy is None:
+            raise NotFoundServiceError("The requested policy could not be found.")
+        await _ensure_policy_owner(engine, policy.main_transaction_reference, user_id)
+        if not policy.policy_pdf_path:
+            raise NotFoundServiceError("The requested policy document is not available.")
 
-    document_path = Path(policy.policy_pdf_path)
-    if not document_path.exists():
-        raise NotFoundServiceError("The requested policy document file is missing.")
+        document_path = Path(policy.policy_pdf_path)
+        if not document_path.exists():
+            raise NotFoundServiceError("The requested policy document file is missing.")
 
-    return FileResponse(
-        path=document_path,
-        media_type="application/pdf",
-        filename=f"{policy.policy_number}.pdf",
-        content_disposition_type="inline",
-    )
+        return FileResponse(
+            path=document_path,
+            media_type="application/pdf",
+            filename=f"{policy.policy_number}.pdf",
+            content_disposition_type="inline",
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to render policy document %s.", policy_number)
+        raise
 
 
 @policy_router.get("/{policy_number}/download", response_class=FileResponse)
@@ -174,22 +195,28 @@ async def download_policy_document(
         HTTPException: Re-raises domain validation errors or wraps unexpected
         failures as HTTP 500 responses through the route guard.
     """
-    policy = await engine.find_one(Policy, Policy.policy_number == policy_number)
-    if policy is None:
-        raise NotFoundServiceError("The requested policy could not be found.")
-    await _ensure_policy_owner(engine, policy.main_transaction_reference, user_id)
-    if not policy.policy_pdf_path:
-        raise NotFoundServiceError("The requested policy document is not available.")
+    try:
+        policy = await engine.find_one(Policy, Policy.policy_number == policy_number)
+        if policy is None:
+            raise NotFoundServiceError("The requested policy could not be found.")
+        await _ensure_policy_owner(engine, policy.main_transaction_reference, user_id)
+        if not policy.policy_pdf_path:
+            raise NotFoundServiceError("The requested policy document is not available.")
 
-    document_path = Path(policy.policy_pdf_path)
-    if not document_path.exists():
-        raise NotFoundServiceError("The requested policy document file is missing.")
+        document_path = Path(policy.policy_pdf_path)
+        if not document_path.exists():
+            raise NotFoundServiceError("The requested policy document file is missing.")
 
-    return FileResponse(
-        path=document_path,
-        media_type="application/pdf",
-        filename=f"{policy.policy_number}.pdf",
-    )
+        return FileResponse(
+            path=document_path,
+            media_type="application/pdf",
+            filename=f"{policy.policy_number}.pdf",
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to download policy document %s.", policy_number)
+        raise
 
 
 async def _ensure_policy_owner(

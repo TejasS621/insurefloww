@@ -9,6 +9,7 @@ import httpx
 from odmantic import AIOEngine
 
 from backend.main_backend.commons.config import settings
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.apis.schemas.requests.application_request import (
     ApplicationCreateRequest,
 )
@@ -20,6 +21,8 @@ from backend.main_backend.core.models.quote_model import Quote, QuoteStatus
 from backend.main_backend.core.models.transaction_model import Transaction, TransactionStatus
 
 from .service_exceptions import ConflictServiceError, IntegrationServiceError, NotFoundServiceError
+
+logger = get_logger(__name__)
 
 
 class QuoteService:
@@ -66,6 +69,11 @@ class QuoteService:
                     },
                 )
         except httpx.HTTPError as exc:
+            logger.exception(
+                "Provider quote request failed for application '%s' and transaction '%s'.",
+                application.application_reference,
+                transaction.transaction_reference,
+            )
             raise IntegrationServiceError(
                 "Unable to reach the provider backend to generate quotes."
             ) from exc
@@ -78,6 +86,11 @@ class QuoteService:
             provider_message = response_payload.get(
                 "message",
                 "Provider backend rejected the quote generation request.",
+            )
+            logger.warning(
+                "Provider rejected quote generation for transaction '%s': %s",
+                transaction.transaction_reference,
+                provider_message,
             )
             raise IntegrationServiceError(provider_message)
 
@@ -107,6 +120,11 @@ class QuoteService:
         application.application_status = ApplicationStatus.QUOTE_GENERATED
         application.updated_at = datetime.now(timezone.utc)
         await engine.save(application)
+        logger.info(
+            "Stored %s quote(s) for transaction '%s'.",
+            len(stored_quotes),
+            transaction.transaction_reference,
+        )
         return stored_quotes
 
     async def list_quotes_for_transaction(
@@ -192,6 +210,12 @@ class QuoteService:
             application.updated_at = datetime.now(timezone.utc)
             await engine.save(application)
 
+        logger.info(
+            "Selected quote '%s' for transaction '%s' with %s addon(s).",
+            quote.provider_quote_id,
+            quote.transaction_reference,
+            len(selected_addons),
+        )
         return quote
 
     @staticmethod

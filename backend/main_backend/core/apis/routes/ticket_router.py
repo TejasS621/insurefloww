@@ -9,8 +9,8 @@ Returns:
     None: Route handlers return structured support-ticket responses.
 
 Raises:
-    HTTPException: Route handlers re-raise handled controller errors and
-    normalize unexpected failures through the shared route guard.
+    HTTPException: Unexpected failures are normalized through the shared
+    route guard before being returned to the caller.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 from odmantic import AIOEngine
 
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import to_ticket_response
 from backend.main_backend.core.apis.routes.dependencies import get_current_user_id
@@ -29,9 +30,11 @@ from backend.main_backend.core.apis.schemas.responses.ticket_response import (
     TicketResponse,
 )
 from backend.main_backend.core.database.database import get_database
+from backend.main_backend.core.services.service_exceptions import ServiceError
 from backend.main_backend.core.services.ticket_service import ticket_service
 
 ticket_router = APIRouter(prefix="/api/v1/tickets", tags=["Tickets"])
+logger = get_logger(__name__)
 
 
 @ticket_router.post(
@@ -60,15 +63,21 @@ async def create_ticket(
         HTTPException: Re-raises domain validation errors or wraps unexpected
         failures as HTTP 500 responses through the route guard.
     """
-    ticket = await ticket_service.create_ticket(
-        engine,
-        user_id=user_id,
-        request_data=request_data,
-    )
-    return APIResponse(
-        message="Ticket created successfully.",
-        data=to_ticket_response(ticket),
-    )
+    try:
+        ticket = await ticket_service.create_ticket(
+            engine,
+            user_id=user_id,
+            request_data=request_data,
+        )
+        return APIResponse(
+            message="Ticket created successfully.",
+            data=to_ticket_response(ticket),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to create ticket for user %s.", user_id)
+        raise
 
 
 @ticket_router.get("/me", response_model=APIResponse[list[TicketResponse]])
@@ -91,8 +100,14 @@ async def list_my_tickets(
         HTTPException: Re-raises domain validation errors or wraps unexpected
         failures as HTTP 500 responses through the route guard.
     """
-    tickets = await ticket_service.list_user_tickets(engine, user_id=user_id)
-    return APIResponse(
-        message="Tickets fetched successfully.",
-        data=[to_ticket_response(ticket) for ticket in tickets],
-    )
+    try:
+        tickets = await ticket_service.list_user_tickets(engine, user_id=user_id)
+        return APIResponse(
+            message="Tickets fetched successfully.",
+            data=[to_ticket_response(ticket) for ticket in tickets],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to list tickets for user %s.", user_id)
+        raise

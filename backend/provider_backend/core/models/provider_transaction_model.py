@@ -1,3 +1,5 @@
+"""Provider transaction persistence models linked to main transactions."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

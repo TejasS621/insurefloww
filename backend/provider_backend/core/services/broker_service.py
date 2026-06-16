@@ -14,12 +14,15 @@ from backend.provider_backend.core.apis.schemas.requests.provider_request import
     KeyRotationRequest,
 )
 from backend.provider_backend.commons.config import settings
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.models.broker_registry_model import (
     BrokerRegistry,
     BrokerStatus,
 )
 
 from .service_exceptions import ConflictServiceError, NotFoundServiceError
+
+logger = get_logger(__name__)
 
 
 class BrokerService:
@@ -39,6 +42,10 @@ class BrokerService:
                 broker.status = BrokerStatus.ACTIVE
                 broker.updated_at = datetime.now(timezone.utc)
                 await engine.save(broker)
+                logger.info(
+                    "Refreshed integration broker credentials for '%s'.",
+                    settings.integration_broker_code,
+                )
             return broker
 
         broker = BrokerRegistry(
@@ -55,6 +62,10 @@ class BrokerService:
             created_by_admin="system",
         )
         await engine.save(broker)
+        logger.info(
+            "Created integration broker '%s' for backend synchronization.",
+            settings.integration_broker_code,
+        )
         return broker
 
     async def register_broker(
@@ -102,6 +113,7 @@ class BrokerService:
             created_by_admin=request_data.created_by_admin,
         )
         await engine.save(broker)
+        logger.info("Registered broker '%s'.", request_data.broker_code)
         return broker, api_key
 
     async def list_brokers(self, engine: AIOEngine) -> list[BrokerRegistry]:
@@ -121,6 +133,7 @@ class BrokerService:
         broker.status = BrokerStatus(request_data.status.value)
         broker.updated_at = datetime.now(timezone.utc)
         await engine.save(broker)
+        logger.info("Updated broker '%s' to status '%s'.", broker_code, request_data.status.value)
         return broker
 
     async def rotate_broker_key(
@@ -138,6 +151,7 @@ class BrokerService:
         broker.last_key_rotated_at = datetime.now(timezone.utc)
         broker.updated_at = datetime.now(timezone.utc)
         await engine.save(broker)
+        logger.info("Rotated API key for broker '%s'.", broker_code)
         return broker, api_key
 
     async def _get_broker(self, engine: AIOEngine, broker_code: str) -> BrokerRegistry:

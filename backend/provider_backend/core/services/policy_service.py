@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from odmantic import AIOEngine
 
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.models.payment_model import Payment, PaymentStatus
 from backend.provider_backend.core.models.policy_model import Policy, PolicyStatus
 from backend.provider_backend.core.models.provider_quote_model import ProviderQuote
@@ -17,6 +18,8 @@ from backend.provider_backend.core.models.provider_transaction_model import (
 
 from .policy_document_service import policy_document_service
 from .service_exceptions import ConflictServiceError, NotFoundServiceError
+
+logger = get_logger(__name__)
 
 
 class ProviderPolicyService:
@@ -34,6 +37,11 @@ class ProviderPolicyService:
             Policy.payment_reference == payment_reference,
         )
         if existing_policy is not None:
+            logger.info(
+                "Reused existing policy '%s' for payment '%s'.",
+                existing_policy.policy_number,
+                payment_reference,
+            )
             return existing_policy
 
         payment = await engine.find_one(Payment, Payment.payment_reference == payment_reference)
@@ -81,6 +89,11 @@ class ProviderPolicyService:
         provider_transaction.execution_status = ProviderTransactionStatus.POLICY_ISSUED
         provider_transaction.updated_at = datetime.now(timezone.utc)
         await engine.save(provider_transaction)
+        logger.info(
+            "Issued policy '%s' for payment '%s'.",
+            policy.policy_number,
+            payment_reference,
+        )
         return policy
 
     async def get_policy_by_number(

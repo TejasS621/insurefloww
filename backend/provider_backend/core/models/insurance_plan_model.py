@@ -1,3 +1,5 @@
+"""Provider insurance plan catalog persistence models."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

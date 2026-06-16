@@ -5,8 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.apis.schemas.shared import HealthDetailsSchema
 from backend.provider_backend.core.models.provider_quote_model import RiskCategory
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -58,6 +61,7 @@ class RiskEngine:
         else:
             category = RiskCategory.HIGH
 
+        logger.info("Calculated provider risk score %.2f with category '%s'.", score, category.value)
         return RiskAssessment(risk_score=round(score, 2), risk_category=category)
 
 

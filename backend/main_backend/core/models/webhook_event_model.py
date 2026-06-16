@@ -1,3 +1,5 @@
+"""Webhook event persistence models for provider synchronization."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

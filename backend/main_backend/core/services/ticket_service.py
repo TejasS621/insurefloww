@@ -7,10 +7,13 @@ from datetime import datetime, timezone
 
 from odmantic import AIOEngine
 
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.apis.schemas.requests.ticket_request import TicketCreateRequest
 from backend.main_backend.core.models.ticket_model import Ticket
 
 from .service_exceptions import ValidationServiceError
+
+logger = get_logger(__name__)
 
 
 class TicketService:
@@ -37,6 +40,7 @@ class TicketService:
             message=request_data.message,
         )
         await engine.save(ticket)
+        logger.info("Created support ticket '%s' for user '%s'.", ticket.ticket_reference, user_id)
         return ticket
 
     async def list_user_tickets(

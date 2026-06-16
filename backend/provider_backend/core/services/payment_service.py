@@ -13,6 +13,7 @@ from backend.provider_backend.core.apis.schemas.requests.payment_request import 
     PaymentSessionCreateRequest,
 )
 from backend.provider_backend.commons.config import settings
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.models.payment_model import (
     GatewayName,
     Payment,
@@ -25,6 +26,8 @@ from backend.provider_backend.core.models.provider_transaction_model import (
 )
 
 from .service_exceptions import ConflictServiceError, NotFoundServiceError
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -56,6 +59,11 @@ class ProviderPaymentService:
             amount=request_data.amount,
             currency=request_data.currency,
         )
+        logger.info(
+            "Created provider payment session '%s' for transaction '%s'.",
+            payment.payment_reference,
+            request_data.main_transaction_reference,
+        )
         return payment
 
     async def create_mock_payment_session(
@@ -80,6 +88,11 @@ class ProviderPaymentService:
             currency=request_data.currency,
         )
         payment_url = self._build_mock_payment_url(payment.payment_reference)
+        logger.info(
+            "Created mock payment session '%s' for transaction '%s'.",
+            payment.payment_reference,
+            request_data.transaction_reference,
+        )
         return MockPaymentSessionResult(
             payment=payment,
             payment_url=payment_url,
@@ -178,6 +191,10 @@ class ProviderPaymentService:
         provider_transaction.execution_status = ProviderTransactionStatus.PAYMENT_SUCCESS
         provider_transaction.updated_at = datetime.now(timezone.utc)
         await engine.save(provider_transaction)
+        logger.info(
+            "Marked provider payment '%s' as successful.",
+            payment.payment_reference,
+        )
         return payment
 
     @staticmethod

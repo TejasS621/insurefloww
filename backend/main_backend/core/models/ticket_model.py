@@ -1,3 +1,5 @@
+"""Support ticket persistence models for customer service workflows."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

@@ -1,3 +1,5 @@
+"""Provider-side broker registry persistence models."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

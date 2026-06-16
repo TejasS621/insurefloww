@@ -1,3 +1,5 @@
+"""Insurance detail persistence models linked to customer transactions."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

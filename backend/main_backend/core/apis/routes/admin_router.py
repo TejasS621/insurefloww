@@ -19,6 +19,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query, status
 from odmantic import AIOEngine
 
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import (
     to_admin_application_response,
@@ -66,6 +67,7 @@ from backend.main_backend.core.models.application_model import Application
 from backend.main_backend.core.services.admin_workflow_service import (
     admin_workflow_service,
 )
+from backend.main_backend.core.services.service_exceptions import ServiceError
 from backend.provider_backend.core.apis.schemas.requests.provider_request import (
     BrokerRegistrationRequest as ProviderBrokerRegistrationRequest,
 )
@@ -78,6 +80,7 @@ from backend.provider_backend.core.apis.schemas.requests.provider_request import
 from backend.provider_backend.core.services.broker_service import broker_service
 
 admin_router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
+logger = get_logger(__name__)
 
 
 @admin_router.post(
@@ -107,28 +110,37 @@ async def register_broker(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    broker, api_key = await broker_service.register_broker(
-        engine,
-        ProviderBrokerRegistrationRequest(
-            broker_name=request_data.broker_name,
-            broker_code=request_data.broker_code,
-            company_name=request_data.company_name,
-            license_number=request_data.license_number,
-            registration_number=request_data.registration_number,
-            contact_person_name=request_data.contact_person_name,
-            contact_email=request_data.contact_email,
-            contact_phone=request_data.contact_phone,
-            supported_insurance_types=request_data.supported_insurance_types,
-            active_regions=request_data.active_regions,
-            partner_provider_codes=request_data.partner_provider_codes,
-            notes=request_data.notes,
-            created_by_admin=actor_id,
-        ),
-    )
-    return APIResponse(
-        message="Broker registered successfully.",
-        data=to_admin_broker_response(broker).model_copy(update={"api_key": api_key}),
-    )
+    try:
+        broker, api_key = await broker_service.register_broker(
+            engine,
+            ProviderBrokerRegistrationRequest(
+                broker_name=request_data.broker_name,
+                broker_code=request_data.broker_code,
+                company_name=request_data.company_name,
+                license_number=request_data.license_number,
+                registration_number=request_data.registration_number,
+                contact_person_name=request_data.contact_person_name,
+                contact_email=request_data.contact_email,
+                contact_phone=request_data.contact_phone,
+                supported_insurance_types=request_data.supported_insurance_types,
+                active_regions=request_data.active_regions,
+                partner_provider_codes=request_data.partner_provider_codes,
+                notes=request_data.notes,
+                created_by_admin=actor_id,
+            ),
+        )
+        return APIResponse(
+            message="Broker registered successfully.",
+            data=to_admin_broker_response(broker).model_copy(update={"api_key": api_key}),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to register broker '%s'.",
+            request_data.broker_code,
+        )
+        raise
 
 
 @admin_router.get("/brokers", response_model=APIResponse[list[BrokerRegistryResponse]])
@@ -152,11 +164,17 @@ async def list_brokers(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    brokers = await broker_service.list_brokers(engine)
-    return APIResponse(
-        message="Brokers fetched successfully.",
-        data=[to_admin_broker_response(broker) for broker in brokers],
-    )
+    try:
+        brokers = await broker_service.list_brokers(engine)
+        return APIResponse(
+            message="Brokers fetched successfully.",
+            data=[to_admin_broker_response(broker) for broker in brokers],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to list brokers for the admin console.")
+        raise
 
 
 @admin_router.post(
@@ -185,15 +203,24 @@ async def register_provider(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    provider = await admin_workflow_service.register_provider(
-        engine,
-        request_data=request_data,
-        actor_id=actor_id,
-    )
-    return APIResponse(
-        message="Provider registered successfully.",
-        data=to_admin_provider_response(provider),
-    )
+    try:
+        provider = await admin_workflow_service.register_provider(
+            engine,
+            request_data=request_data,
+            actor_id=actor_id,
+        )
+        return APIResponse(
+            message="Provider registered successfully.",
+            data=to_admin_provider_response(provider),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to register provider '%s'.",
+            request_data.provider_code,
+        )
+        raise
 
 
 @admin_router.get("/providers", response_model=APIResponse[list[ProviderRegistryResponse]])
@@ -216,11 +243,17 @@ async def list_providers(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    providers = await admin_workflow_service.list_providers(engine)
-    return APIResponse(
-        message="Providers fetched successfully.",
-        data=[to_admin_provider_response(provider) for provider in providers],
-    )
+    try:
+        providers = await admin_workflow_service.list_providers(engine)
+        return APIResponse(
+            message="Providers fetched successfully.",
+            data=[to_admin_provider_response(provider) for provider in providers],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to list providers for the admin console.")
+        raise
 
 
 @admin_router.patch(
@@ -250,16 +283,25 @@ async def update_provider_status(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    provider = await admin_workflow_service.update_provider_status(
-        engine,
-        provider_code=provider_code,
-        request_data=request_data,
-        actor_id=actor_id,
-    )
-    return APIResponse(
-        message="Provider status updated successfully.",
-        data=to_admin_provider_response(provider),
-    )
+    try:
+        provider = await admin_workflow_service.update_provider_status(
+            engine,
+            provider_code=provider_code,
+            request_data=request_data,
+            actor_id=actor_id,
+        )
+        return APIResponse(
+            message="Provider status updated successfully.",
+            data=to_admin_provider_response(provider),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to update provider status for '%s'.",
+            provider_code,
+        )
+        raise
 
 
 @admin_router.patch(
@@ -289,18 +331,27 @@ async def update_broker_status(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    broker = await broker_service.update_broker_status(
-        engine,
-        broker_code=broker_code,
-        request_data=ProviderBrokerStatusUpdateRequest(
-            status=request_data.status.value,
-            reason=request_data.reason,
-        ),
-    )
-    return APIResponse(
-        message="Broker status updated successfully.",
-        data=to_admin_broker_response(broker),
-    )
+    try:
+        broker = await broker_service.update_broker_status(
+            engine,
+            broker_code=broker_code,
+            request_data=ProviderBrokerStatusUpdateRequest(
+                status=request_data.status.value,
+                reason=request_data.reason,
+            ),
+        )
+        return APIResponse(
+            message="Broker status updated successfully.",
+            data=to_admin_broker_response(broker),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to update broker status for '%s'.",
+            broker_code,
+        )
+        raise
 
 
 @admin_router.put(
@@ -331,18 +382,27 @@ async def rotate_broker_key(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    broker, api_key = await broker_service.rotate_broker_key(
-        engine,
-        broker_code=broker_code,
-        request_data=ProviderKeyRotationRequest(
-            rotated_by=request_data.initiated_by or actor_id,
-            reason=request_data.reason,
-        ),
-    )
-    return APIResponse(
-        message="Broker key rotated successfully.",
-        data=to_admin_broker_response(broker).model_copy(update={"api_key": api_key}),
-    )
+    try:
+        broker, api_key = await broker_service.rotate_broker_key(
+            engine,
+            broker_code=broker_code,
+            request_data=ProviderKeyRotationRequest(
+                rotated_by=request_data.initiated_by or actor_id,
+                reason=request_data.reason,
+            ),
+        )
+        return APIResponse(
+            message="Broker key rotated successfully.",
+            data=to_admin_broker_response(broker).model_copy(update={"api_key": api_key}),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to rotate broker key for '%s'.",
+            broker_code,
+        )
+        raise
 
 
 @admin_router.get("/tickets", response_model=APIResponse[list[AdminTicketResponse]])
@@ -366,11 +426,17 @@ async def list_tickets(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    tickets = await admin_workflow_service.list_tickets(engine)
-    return APIResponse(
-        message="Admin tickets fetched successfully.",
-        data=[to_admin_ticket_response(ticket) for ticket in tickets],
-    )
+    try:
+        tickets = await admin_workflow_service.list_tickets(engine)
+        return APIResponse(
+            message="Admin tickets fetched successfully.",
+            data=[to_admin_ticket_response(ticket) for ticket in tickets],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to list admin tickets.")
+        raise
 
 
 @admin_router.get(
@@ -398,14 +464,23 @@ async def get_ticket_detail(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    ticket = await admin_workflow_service.get_ticket_detail(
-        engine,
-        ticket_reference=ticket_reference,
-    )
-    return APIResponse(
-        message="Admin ticket detail fetched successfully.",
-        data=to_admin_ticket_response(ticket),
-    )
+    try:
+        ticket = await admin_workflow_service.get_ticket_detail(
+            engine,
+            ticket_reference=ticket_reference,
+        )
+        return APIResponse(
+            message="Admin ticket detail fetched successfully.",
+            data=to_admin_ticket_response(ticket),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to fetch admin ticket detail for '%s'.",
+            ticket_reference,
+        )
+        raise
 
 
 @admin_router.patch(
@@ -435,16 +510,25 @@ async def assign_ticket(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    ticket = await admin_workflow_service.assign_ticket(
-        engine,
-        ticket_reference=ticket_reference,
-        request_data=request_data,
-        actor_id=actor_id,
-    )
-    return APIResponse(
-        message="Ticket assigned successfully.",
-        data=to_admin_ticket_response(ticket),
-    )
+    try:
+        ticket = await admin_workflow_service.assign_ticket(
+            engine,
+            ticket_reference=ticket_reference,
+            request_data=request_data,
+            actor_id=actor_id,
+        )
+        return APIResponse(
+            message="Ticket assigned successfully.",
+            data=to_admin_ticket_response(ticket),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to assign ticket '%s'.",
+            ticket_reference,
+        )
+        raise
 
 
 @admin_router.patch(
@@ -474,16 +558,25 @@ async def update_ticket_status(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    ticket = await admin_workflow_service.update_ticket_status(
-        engine,
-        ticket_reference=ticket_reference,
-        request_data=request_data,
-        actor_id=actor_id,
-    )
-    return APIResponse(
-        message="Ticket status updated successfully.",
-        data=to_admin_ticket_response(ticket),
-    )
+    try:
+        ticket = await admin_workflow_service.update_ticket_status(
+            engine,
+            ticket_reference=ticket_reference,
+            request_data=request_data,
+            actor_id=actor_id,
+        )
+        return APIResponse(
+            message="Ticket status updated successfully.",
+            data=to_admin_ticket_response(ticket),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to update ticket status for '%s'.",
+            ticket_reference,
+        )
+        raise
 
 
 @admin_router.get(
@@ -510,11 +603,17 @@ async def list_applications(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    applications = await admin_workflow_service.list_applications(engine)
-    return APIResponse(
-        message="Admin applications fetched successfully.",
-        data=[to_admin_application_response(application) for application in applications],
-    )
+    try:
+        applications = await admin_workflow_service.list_applications(engine)
+        return APIResponse(
+            message="Admin applications fetched successfully.",
+            data=[to_admin_application_response(application) for application in applications],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to list admin applications.")
+        raise
 
 
 @admin_router.patch(
@@ -544,16 +643,25 @@ async def review_application(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    application = await admin_workflow_service.review_application(
-        engine,
-        application_reference=application_reference,
-        request_data=request_data,
-        actor_id=actor_id,
-    )
-    return APIResponse(
-        message="Application review completed successfully.",
-        data=to_admin_application_response(application),
-    )
+    try:
+        application = await admin_workflow_service.review_application(
+            engine,
+            application_reference=application_reference,
+            request_data=request_data,
+            actor_id=actor_id,
+        )
+        return APIResponse(
+            message="Application review completed successfully.",
+            data=to_admin_application_response(application),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to review application '%s'.",
+            application_reference,
+        )
+        raise
 
 
 @admin_router.get(
@@ -580,18 +688,24 @@ async def list_underwriting_reviews(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    review_items = await admin_workflow_service.list_underwriting_reviews(engine)
-    return APIResponse(
-        message="Underwriting review queue fetched successfully.",
-        data=[
-            to_underwriting_review_response(
-                item.application,
-                risk_flags=item.risk_flags,
-                highest_quote_risk_category=item.highest_quote_risk_category,
-            )
-            for item in review_items
-        ],
-    )
+    try:
+        review_items = await admin_workflow_service.list_underwriting_reviews(engine)
+        return APIResponse(
+            message="Underwriting review queue fetched successfully.",
+            data=[
+                to_underwriting_review_response(
+                    item.application,
+                    risk_flags=item.risk_flags,
+                    highest_quote_risk_category=item.highest_quote_risk_category,
+                )
+                for item in review_items
+            ],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to list underwriting review queue items.")
+        raise
 
 
 @admin_router.patch(
@@ -622,16 +736,25 @@ async def process_underwriting_review(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    application = await admin_workflow_service.process_underwriting_review(
-        engine,
-        application_reference=application_reference,
-        request_data=request_data,
-        actor_id=actor_id,
-    )
-    return APIResponse(
-        message="Underwriting review completed successfully.",
-        data=to_admin_application_response(application),
-    )
+    try:
+        application = await admin_workflow_service.process_underwriting_review(
+            engine,
+            application_reference=application_reference,
+            request_data=request_data,
+            actor_id=actor_id,
+        )
+        return APIResponse(
+            message="Underwriting review completed successfully.",
+            data=to_admin_application_response(application),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to process underwriting review for '%s'.",
+            application_reference,
+        )
+        raise
 
 
 @admin_router.get("/policies", response_model=APIResponse[list[AdminPolicyResponse]])
@@ -654,11 +777,17 @@ async def list_policies(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    policies = await admin_workflow_service.list_policies(engine)
-    return APIResponse(
-        message="Admin policies fetched successfully.",
-        data=[to_admin_policy_response(policy) for policy in policies],
-    )
+    try:
+        policies = await admin_workflow_service.list_policies(engine)
+        return APIResponse(
+            message="Admin policies fetched successfully.",
+            data=[to_admin_policy_response(policy) for policy in policies],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to list admin policies.")
+        raise
 
 
 @admin_router.get(
@@ -693,45 +822,55 @@ async def list_transactions(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    transactions = await admin_workflow_service.list_transactions(engine)
-    applications = await admin_workflow_service.list_applications(engine)
-    application_by_reference = {
-        application.transaction_reference: application
-        for application in applications
-        if application.transaction_reference
-    }
-    filtered = [
-        transaction
-        for transaction in transactions
-        if admin_workflow_service.match_transaction_status_filter(transaction, status)
-    ]
-    if search:
-        needle = search.strip().lower()
+    try:
+        transactions = await admin_workflow_service.list_transactions(engine)
+        applications = await admin_workflow_service.list_applications(engine)
+        application_by_reference = {
+            application.transaction_reference: application
+            for application in applications
+            if application.transaction_reference
+        }
         filtered = [
             transaction
-            for transaction in filtered
-            if needle in transaction.transaction_reference.lower()
-            or needle in transaction.application_snapshot.insurance_type.lower()
-            or needle
-            in (
-                f"{transaction.application_snapshot.personal_details.first_name} "
-                f"{transaction.application_snapshot.personal_details.last_name}"
-            )
-            .strip()
-            .lower()
+            for transaction in transactions
+            if admin_workflow_service.match_transaction_status_filter(transaction, status)
         ]
-    start = (page - 1) * limit
-    paged = filtered[start : start + limit]
-    return APIResponse(
-        message="Admin transactions fetched successfully.",
-        data=[
-            to_admin_transaction_response(
-                transaction,
-                application=application_by_reference.get(transaction.transaction_reference),
-            )
-            for transaction in paged
-        ],
-    )
+        if search:
+            needle = search.strip().lower()
+            filtered = [
+                transaction
+                for transaction in filtered
+                if needle in transaction.transaction_reference.lower()
+                or needle in transaction.application_snapshot.insurance_type.lower()
+                or needle
+                in (
+                    f"{transaction.application_snapshot.personal_details.first_name} "
+                    f"{transaction.application_snapshot.personal_details.last_name}"
+                )
+                .strip()
+                .lower()
+            ]
+        start = (page - 1) * limit
+        paged = filtered[start : start + limit]
+        return APIResponse(
+            message="Admin transactions fetched successfully.",
+            data=[
+                to_admin_transaction_response(
+                    transaction,
+                    application=application_by_reference.get(transaction.transaction_reference),
+                )
+                for transaction in paged
+            ],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to list admin transactions with status '%s' and page %s.",
+            status,
+            page,
+        )
+        raise
 
 
 @admin_router.get(
@@ -760,23 +899,32 @@ async def get_transaction_detail(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    transaction = await admin_workflow_service.get_transaction_detail(
-        engine,
-        transaction_reference=transaction_reference,
-    )
-    application = (
-        await engine.find_one(
-            Application,
-            Application.application_reference
-            == transaction.application_snapshot.application_reference,
+    try:
+        transaction = await admin_workflow_service.get_transaction_detail(
+            engine,
+            transaction_reference=transaction_reference,
         )
-        if transaction.application_snapshot.application_reference
-        else None
-    )
-    return APIResponse(
-        message="Admin transaction detail fetched successfully.",
-        data=to_admin_transaction_detail_response(transaction, application=application),
-    )
+        application = (
+            await engine.find_one(
+                Application,
+                Application.application_reference
+                == transaction.application_snapshot.application_reference,
+            )
+            if transaction.application_snapshot.application_reference
+            else None
+        )
+        return APIResponse(
+            message="Admin transaction detail fetched successfully.",
+            data=to_admin_transaction_detail_response(transaction, application=application),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to fetch admin transaction detail for '%s'.",
+            transaction_reference,
+        )
+        raise
 
 
 @admin_router.get("/payments", response_model=APIResponse[list[AdminPaymentResponse]])
@@ -808,27 +956,37 @@ async def list_payments(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    payments = await admin_workflow_service.list_payments(engine)
-    filtered = [
-        payment
-        for payment in payments
-        if admin_workflow_service.match_payment_status_filter(payment, status)
-    ]
-    if search:
-        needle = search.strip().lower()
+    try:
+        payments = await admin_workflow_service.list_payments(engine)
         filtered = [
             payment
-            for payment in filtered
-            if needle in payment.payment_reference.lower()
-            or needle in payment.main_transaction_reference.lower()
-            or needle in payment.gateway_name.value.lower()
+            for payment in payments
+            if admin_workflow_service.match_payment_status_filter(payment, status)
         ]
-    start = (page - 1) * limit
-    paged = filtered[start : start + limit]
-    return APIResponse(
-        message="Admin payments fetched successfully.",
-        data=[to_admin_payment_response(payment) for payment in paged],
-    )
+        if search:
+            needle = search.strip().lower()
+            filtered = [
+                payment
+                for payment in filtered
+                if needle in payment.payment_reference.lower()
+                or needle in payment.main_transaction_reference.lower()
+                or needle in payment.gateway_name.value.lower()
+            ]
+        start = (page - 1) * limit
+        paged = filtered[start : start + limit]
+        return APIResponse(
+            message="Admin payments fetched successfully.",
+            data=[to_admin_payment_response(payment) for payment in paged],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to list admin payments with status '%s' and page %s.",
+            status,
+            page,
+        )
+        raise
 
 
 @admin_router.patch(
@@ -858,16 +1016,25 @@ async def update_policy_status(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    policy = await admin_workflow_service.update_policy_status(
-        engine,
-        policy_number=policy_number,
-        request_data=request_data,
-        actor_id=actor_id,
-    )
-    return APIResponse(
-        message="Policy status updated successfully.",
-        data=to_admin_policy_response(policy),
-    )
+    try:
+        policy = await admin_workflow_service.update_policy_status(
+            engine,
+            policy_number=policy_number,
+            request_data=request_data,
+            actor_id=actor_id,
+        )
+        return APIResponse(
+            message="Policy status updated successfully.",
+            data=to_admin_policy_response(policy),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to update policy status for '%s'.",
+            policy_number,
+        )
+        raise
 
 
 @admin_router.get(
@@ -894,34 +1061,40 @@ async def get_dashboard(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    stats = await admin_workflow_service.get_dashboard_statistics(engine)
-    return APIResponse(
-        message="Admin dashboard statistics fetched successfully.",
-        data=to_dashboard_statistics_response(
-            total_applications=stats.total_applications,
-            total_tickets=stats.total_tickets,
-            total_policies=stats.total_policies,
-            total_brokers=stats.total_brokers,
-            total_audit_logs=stats.total_audit_logs,
-            pending_underwriting_reviews=stats.pending_underwriting_reviews,
-            application_status_breakdown=[
-                to_status_count_response(status_name, count)
-                for status_name, count in stats.application_status_breakdown
-            ],
-            ticket_status_breakdown=[
-                to_status_count_response(status_name, count)
-                for status_name, count in stats.ticket_status_breakdown
-            ],
-            policy_status_breakdown=[
-                to_status_count_response(status_name, count)
-                for status_name, count in stats.policy_status_breakdown
-            ],
-            broker_status_breakdown=[
-                to_status_count_response(status_name, count)
-                for status_name, count in stats.broker_status_breakdown
-            ],
-        ),
-    )
+    try:
+        stats = await admin_workflow_service.get_dashboard_statistics(engine)
+        return APIResponse(
+            message="Admin dashboard statistics fetched successfully.",
+            data=to_dashboard_statistics_response(
+                total_applications=stats.total_applications,
+                total_tickets=stats.total_tickets,
+                total_policies=stats.total_policies,
+                total_brokers=stats.total_brokers,
+                total_audit_logs=stats.total_audit_logs,
+                pending_underwriting_reviews=stats.pending_underwriting_reviews,
+                application_status_breakdown=[
+                    to_status_count_response(status_name, count)
+                    for status_name, count in stats.application_status_breakdown
+                ],
+                ticket_status_breakdown=[
+                    to_status_count_response(status_name, count)
+                    for status_name, count in stats.ticket_status_breakdown
+                ],
+                policy_status_breakdown=[
+                    to_status_count_response(status_name, count)
+                    for status_name, count in stats.policy_status_breakdown
+                ],
+                broker_status_breakdown=[
+                    to_status_count_response(status_name, count)
+                    for status_name, count in stats.broker_status_breakdown
+                ],
+            ),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to fetch admin dashboard statistics.")
+        raise
 
 
 @admin_router.get("/audit-logs", response_model=APIResponse[list[AuditLogResponse]])
@@ -947,8 +1120,17 @@ async def list_audit_logs(
         HTTPException: Re-raises controller validation errors or wraps
         unexpected exceptions as HTTP 500 responses.
     """
-    logs = await admin_workflow_service.list_audit_logs(engine, limit=limit)
-    return APIResponse(
-        message="Audit logs fetched successfully.",
-        data=[to_audit_log_response(log) for log in logs],
-    )
+    try:
+        logs = await admin_workflow_service.list_audit_logs(engine, limit=limit)
+        return APIResponse(
+            message="Audit logs fetched successfully.",
+            data=[to_audit_log_response(log) for log in logs],
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to list admin audit logs with limit %s.",
+            limit,
+        )
+        raise

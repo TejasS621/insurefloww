@@ -1,3 +1,5 @@
+"""Transaction and payment lifecycle models for the main backend."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

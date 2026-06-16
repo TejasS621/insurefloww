@@ -1,3 +1,5 @@
+"""Provider registry persistence models for insurer management."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

@@ -22,6 +22,7 @@ from datetime import datetime, time, timezone
 
 from odmantic import AIOEngine
 
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.apis.schemas.requests.application_request import (
     ApplicationCreateRequest,
 )
@@ -43,6 +44,8 @@ from backend.main_backend.core.models.transaction_model import (
 )
 
 from .service_exceptions import ConflictServiceError
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -147,6 +150,12 @@ class ApplicationService:
             insurance_type=request_data.insurance_type.value,
         )
         if existing_application and existing_transaction:
+            logger.info(
+                "Resuming active journey '%s' for mobile '%s' and insurance type '%s'.",
+                existing_application.application_reference,
+                request_data.personal_details.mobile_number,
+                request_data.insurance_type.value,
+            )
             insurance_details = await self._get_insurance_details(
                 engine, existing_transaction
             )
@@ -162,6 +171,12 @@ class ApplicationService:
         )
         transaction_reference = self._generate_reference(
             "TXN", request_data.insurance_type.value
+        )
+        logger.info(
+            "Creating new application '%s' with transaction '%s' for insurance type '%s'.",
+            application_reference,
+            transaction_reference,
+            request_data.insurance_type.value,
         )
 
         personal_payload = request_data.personal_details.model_dump()

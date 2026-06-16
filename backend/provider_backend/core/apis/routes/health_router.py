@@ -17,12 +17,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.apis.routes._helpers import route_guard
 from backend.provider_backend.core.apis.schemas.responses.common_response import (
     APIResponse,
 )
+from backend.provider_backend.core.services.service_exceptions import ServiceError
 
 health_router = APIRouter(prefix="/api/v1", tags=["Health"])
+logger = get_logger(__name__)
 
 
 @health_router.get("/health", response_model=APIResponse[dict[str, str]])
@@ -42,4 +45,10 @@ async def health_check() -> APIResponse[dict[str, str]]:
         HTTPException: Unexpected failures are wrapped as internal server
         errors through the route guard.
     """
-    return APIResponse(message="Provider backend is healthy.", data={"status": "ok"})
+    try:
+        return APIResponse(message="Provider backend is healthy.", data={"status": "ok"})
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception("Failed to build provider backend health response.")
+        raise

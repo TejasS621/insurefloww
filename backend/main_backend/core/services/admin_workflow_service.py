@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 from odmantic import AIOEngine
 
+from backend.main_backend.commons.logger import get_logger
 from backend.main_backend.core.apis.schemas.requests.admin_request import (
     ApplicationReviewDecision,
     ApplicationReviewRequest,
@@ -60,6 +61,8 @@ from backend.provider_backend.core.models.provider_quote_model import (
 from backend.provider_backend.commons.config import settings as provider_settings
 
 from .service_exceptions import ConflictServiceError, NotFoundServiceError
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -113,6 +116,11 @@ class AdminWorkflowService:
         ticket.assigned_admin_id = request_data.assigned_admin_id
         ticket.updated_at = datetime.now(timezone.utc)
         await engine.save(ticket)
+        logger.info(
+            "Assigned ticket '%s' to admin '%s'.",
+            ticket_reference,
+            request_data.assigned_admin_id,
+        )
         await self._create_audit_log(
             engine,
             actor_id=actor_id,
@@ -144,6 +152,11 @@ class AdminWorkflowService:
             ticket.admin_response = request_data.admin_response
         ticket.updated_at = datetime.now(timezone.utc)
         await engine.save(ticket)
+        logger.info(
+            "Updated ticket '%s' to status '%s'.",
+            ticket_reference,
+            request_data.status.value,
+        )
         await self._create_audit_log(
             engine,
             actor_id=actor_id,

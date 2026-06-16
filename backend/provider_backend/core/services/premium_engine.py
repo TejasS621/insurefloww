@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from backend.provider_backend.commons.logger import get_logger
 from backend.provider_backend.core.apis.schemas.shared import InsuranceType
 from backend.provider_backend.core.models.provider_quote_model import RiskCategory
+
+logger = get_logger(__name__)
 
 
 @dataclass(slots=True)
@@ -49,6 +52,11 @@ class PremiumEngine:
         base_premium = round(coverage_amount * base_rate * risk_multiplier * plan_multiplier, 2)
         tax_amount = round(base_premium * 0.18, 2)
         total_premium = round(base_premium + tax_amount, 2)
+        logger.info(
+            "Calculated premium for insurance type '%s' with risk '%s'.",
+            insurance_type.value,
+            risk_category.value,
+        )
         return PremiumBreakdown(
             base_premium=base_premium,
             tax_amount=tax_amount,
