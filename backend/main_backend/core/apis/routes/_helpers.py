@@ -15,6 +15,7 @@ Raises:
 
 from __future__ import annotations
 
+import inspect
 from functools import wraps
 from typing import Any, Awaitable, Callable, TypeVar
 
@@ -82,4 +83,5 @@ def route_guard(func: RouteFunc) -> RouteFunc:
                 detail="Internal server error",
             ) from exc
 
+    wrapper.__signature__ = inspect.signature(func)
     return wrapper  # type: ignore[return-value]

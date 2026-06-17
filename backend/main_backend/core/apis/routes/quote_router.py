@@ -22,7 +22,6 @@ from fastapi import APIRouter, Depends
 from odmantic import AIOEngine
 
 from backend.main_backend.commons.logger import get_logger
-from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import to_quote_response
 from backend.main_backend.core.apis.routes.dependencies import get_optional_user_id
 from backend.main_backend.core.apis.schemas.requests.quote_request import (
@@ -47,7 +46,6 @@ logger = get_logger(__name__)
 
 
 @quote_router.post("/select/{quote_id}", response_model=APIResponse[NormalizedQuoteResponse])
-@route_guard
 async def select_quote(
     quote_id: str,
     request_data: QuoteSelectRequest,

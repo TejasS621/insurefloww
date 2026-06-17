@@ -158,7 +158,20 @@ class BaseBackendClient:
             if isinstance(errors, list) and errors:
                 detail = errors[0]
                 if isinstance(detail, dict) and detail.get("detail"):
-                    message = str(detail["detail"])
+                    if response.status_code == 422 and detail.get("loc") and detail.get("msg"):
+                        location = ".".join(
+                            str(item) for item in detail.get("loc", []) if str(item) != "body"
+                        )
+                        field_label = location or "request"
+                        message = f"{field_label}: {detail['msg']}"
+                    else:
+                        message = str(detail["detail"])
+                elif response.status_code == 422 and isinstance(detail, dict) and detail.get("msg"):
+                    location = ".".join(
+                        str(item) for item in detail.get("loc", []) if str(item) != "body"
+                    )
+                    field_label = location or "request"
+                    message = f"{field_label}: {detail['msg']}"
 
         code = "backend_request_error"
         if response.status_code == 401:

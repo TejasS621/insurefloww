@@ -24,7 +24,6 @@ from fastapi.responses import FileResponse
 from odmantic import AIOEngine
 
 from backend.main_backend.commons.logger import get_logger
-from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import (
     to_payment_initiation_response,
 )
@@ -60,7 +59,6 @@ logger = get_logger(__name__)
     "/initiate/{transaction_reference}",
     response_model=APIResponse[PaymentInitiationResponse],
 )
-@route_guard
 async def initiate_payment(
     transaction_reference: str,
     request_data: PaymentInitiationRequest | None = None,
@@ -158,7 +156,6 @@ async def initiate_payment(
     "/status/{transaction_reference}",
     response_model=APIResponse[PaymentStatusResponse],
 )
-@route_guard
 async def get_payment_status(
     transaction_reference: str,
     engine: AIOEngine = Depends(get_database),
@@ -202,7 +199,6 @@ async def get_payment_status(
 
 
 @payment_router.get("/receipt/{payment_reference}", response_class=FileResponse)
-@route_guard
 async def download_payment_receipt(
     payment_reference: str,
     engine: AIOEngine = Depends(get_database),
