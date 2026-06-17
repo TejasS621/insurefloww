@@ -35,7 +35,12 @@ from backend.main_backend.core.apis.routes._mappers import (
     to_status_count_response,
     to_underwriting_review_response,
 )
-from backend.main_backend.core.apis.routes.dependencies import get_current_admin_actor
+from backend.main_backend.core.apis.routes.dependencies import (
+    AuthenticatedPrincipal,
+    get_current_admin_actor,
+    get_current_provider_operator_actor,
+    get_current_provider_operator_principal,
+)
 from backend.main_backend.core.apis.schemas.requests.admin_request import (
     ApplicationReviewRequest,
     BrokerKeyRotationRequest,
@@ -44,6 +49,7 @@ from backend.main_backend.core.apis.schemas.requests.admin_request import (
     PolicyStatusUpdateRequest,
     ProviderRegistrationRequest,
     ProviderStatusUpdateRequest,
+    ProviderUpdateRequest,
     TicketAssignmentRequest,
     TicketStatusUpdateRequest,
     UnderwritingReviewRequest,
@@ -186,7 +192,8 @@ async def list_brokers(
 async def register_provider(
     request_data: ProviderRegistrationRequest,
     engine: AIOEngine = Depends(get_database),
-    actor_id: str = Depends(get_current_admin_actor),
+    actor_id: str = Depends(get_current_provider_operator_actor),
+    operator: AuthenticatedPrincipal = Depends(get_current_provider_operator_principal),
 ) -> APIResponse[ProviderRegistryResponse]:
     """
     Register a provider through the admin orchestration API.
@@ -194,7 +201,10 @@ async def register_provider(
     Args:
         request_data: Validated provider-registration payload from the admin UI.
         engine: Active ODMantic database engine dependency.
-        actor_id: Authenticated admin identifier used for audit ownership.
+        actor_id: Authenticated admin or provider-admin identifier used for
+        audit ownership.
+        operator: Authenticated operator principal used for role-aware audit
+        logging.
 
     Returns:
         APIResponse[ProviderRegistryResponse]: Newly registered provider details.
@@ -208,6 +218,7 @@ async def register_provider(
             engine,
             request_data=request_data,
             actor_id=actor_id,
+            actor_role=operator.role.upper(),
         )
         return APIResponse(
             message="Provider registered successfully.",
@@ -227,14 +238,15 @@ async def register_provider(
 @route_guard
 async def list_providers(
     engine: AIOEngine = Depends(get_database),
-    _: str = Depends(get_current_admin_actor),
+    _: str = Depends(get_current_provider_operator_actor),
 ) -> APIResponse[list[ProviderRegistryResponse]]:
     """
     List all registered providers for the admin console.
 
     Args:
         engine: Active ODMantic database engine dependency.
-        _: Authenticated admin dependency enforcing admin-only access.
+        _: Authenticated admin or provider-admin dependency enforcing
+        provider-registry access control.
 
     Returns:
         APIResponse[list[ProviderRegistryResponse]]: Registered provider records.
@@ -265,7 +277,8 @@ async def update_provider_status(
     provider_code: str,
     request_data: ProviderStatusUpdateRequest,
     engine: AIOEngine = Depends(get_database),
-    actor_id: str = Depends(get_current_admin_actor),
+    actor_id: str = Depends(get_current_provider_operator_actor),
+    operator: AuthenticatedPrincipal = Depends(get_current_provider_operator_principal),
 ) -> APIResponse[ProviderRegistryResponse]:
     """
     Update the lifecycle status of a provider.
@@ -274,7 +287,10 @@ async def update_provider_status(
         provider_code: Provider code identifying the target provider record.
         request_data: Validated status-update payload from the admin UI.
         engine: Active ODMantic database engine dependency.
-        actor_id: Authenticated admin identifier used for audit ownership.
+        actor_id: Authenticated admin or provider-admin identifier used for
+        audit ownership.
+        operator: Authenticated operator principal used for role-aware audit
+        logging.
 
     Returns:
         APIResponse[ProviderRegistryResponse]: Updated provider registry record.
@@ -289,6 +305,7 @@ async def update_provider_status(
             provider_code=provider_code,
             request_data=request_data,
             actor_id=actor_id,
+            actor_role=operator.role.upper(),
         )
         return APIResponse(
             message="Provider status updated successfully.",
@@ -299,6 +316,59 @@ async def update_provider_status(
     except Exception:
         logger.exception(
             "Failed to update provider status for '%s'.",
+            provider_code,
+        )
+        raise
+
+
+@admin_router.put(
+    "/providers/{provider_code}",
+    response_model=APIResponse[ProviderRegistryResponse],
+)
+@route_guard
+async def update_provider_profile(
+    provider_code: str,
+    request_data: ProviderUpdateRequest,
+    engine: AIOEngine = Depends(get_database),
+    actor_id: str = Depends(get_current_provider_operator_actor),
+    operator: AuthenticatedPrincipal = Depends(get_current_provider_operator_principal),
+) -> APIResponse[ProviderRegistryResponse]:
+    """
+    Update editable provider profile fields for registry management.
+
+    Args:
+        provider_code: Provider code identifying the target provider record.
+        request_data: Validated provider-profile payload from the admin UI.
+        engine: Active ODMantic database engine dependency.
+        actor_id: Authenticated admin or provider-admin identifier used for
+        audit ownership.
+        operator: Authenticated operator principal used for role-aware audit
+        logging.
+
+    Returns:
+        APIResponse[ProviderRegistryResponse]: Updated provider registry record.
+
+    Raises:
+        HTTPException: Re-raises controller validation errors or wraps
+        unexpected exceptions as HTTP 500 responses.
+    """
+    try:
+        provider = await admin_workflow_service.update_provider_profile(
+            engine,
+            provider_code=provider_code,
+            request_data=request_data,
+            actor_id=actor_id,
+            actor_role=operator.role.upper(),
+        )
+        return APIResponse(
+            message="Provider profile updated successfully.",
+            data=to_admin_provider_response(provider),
+        )
+    except ServiceError:
+        raise
+    except Exception:
+        logger.exception(
+            "Failed to update provider profile for '%s'.",
             provider_code,
         )
         raise

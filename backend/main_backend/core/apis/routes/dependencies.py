@@ -15,6 +15,15 @@ from backend.main_backend.commons.auth import (
     JWTError,
     decode_access_token,
 )
+from backend.provider_backend.commons.auth import (
+    ExpiredSignatureError as ProviderExpiredSignatureError,
+)
+from backend.provider_backend.commons.auth import (
+    JWTError as ProviderJWTError,
+)
+from backend.provider_backend.commons.auth import (
+    decode_access_token as decode_provider_access_token,
+)
 from backend.main_backend.commons.config import settings
 from backend.main_backend.core.database.database import get_database
 from backend.main_backend.core.services.service_exceptions import (
@@ -124,6 +133,43 @@ async def get_current_admin_actor(
     return principal.subject
 
 
+async def get_optional_provider_operator_principal(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> AuthenticatedPrincipal | None:
+    """Return an admin or provider-admin principal for provider registry routes.
+
+    These routes are owned by the main backend today, but the provider-admin
+    frontend also needs access to them. This helper accepts either a main-backend
+    admin token or a provider-backend provider-admin token.
+    """
+    principal = _decode_optional_operator_principal(credentials)
+    if principal is None:
+        return None
+    if principal.role not in {"admin", "provider_admin"}:
+        raise AuthorizationServiceError(
+            "This endpoint only accepts admin or provider admin access tokens."
+        )
+    return principal
+
+
+async def get_current_provider_operator_principal(
+    principal: AuthenticatedPrincipal | None = Depends(
+        get_optional_provider_operator_principal
+    ),
+) -> AuthenticatedPrincipal:
+    """Require an admin or provider-admin JWT and return the principal."""
+    if principal is None:
+        raise AuthenticationServiceError("A valid operator access token is required.")
+    return principal
+
+
+async def get_current_provider_operator_actor(
+    principal: AuthenticatedPrincipal = Depends(get_current_provider_operator_principal),
+) -> str:
+    """Return the authenticated operator identifier for provider registry routes."""
+    return principal.subject
+
+
 async def get_authenticated_broker(
     x_broker_code: str | None = Header(default=None, alias="X-Broker-Code"),
     x_broker_api_key: str | None = Header(default=None, alias="X-Broker-Api-Key"),
@@ -174,3 +220,53 @@ def _decode_optional_principal(
         role=claims.role,
         expires_at=claims.expires_at,
     )
+
+
+def _decode_optional_operator_principal(
+    credentials: HTTPAuthorizationCredentials | None,
+) -> AuthenticatedPrincipal | None:
+    """Decode an admin/provider-admin token signed by either backend.
+
+    Provider registry routes currently live in the main backend while provider
+    admins authenticate against the provider backend. This helper keeps the
+    integration thin by validating either token source without duplicating auth
+    logic in the frontend.
+    """
+    if credentials is None:
+        return None
+    if credentials.scheme.lower() != "bearer":
+        raise AuthenticationServiceError(
+            "Authorization credentials must use the Bearer scheme."
+        )
+
+    token = credentials.credentials
+    provider_expired_error: ProviderExpiredSignatureError | None = None
+    provider_decode_error: ProviderJWTError | None = None
+
+    try:
+        claims: JWTClaims = decode_access_token(token=token)
+    except ExpiredSignatureError:
+        raise AuthenticationServiceError("The access token has expired.") from None
+    except JWTError:
+        try:
+            provider_claims = decode_provider_access_token(token=token)
+        except ProviderExpiredSignatureError as exc:
+            provider_expired_error = exc
+        except ProviderJWTError as exc:
+            provider_decode_error = exc
+        else:
+            return AuthenticatedPrincipal(
+                subject=provider_claims.subject,
+                role=provider_claims.role,
+                expires_at=provider_claims.expires_at,
+            )
+    else:
+        return AuthenticatedPrincipal(
+            subject=claims.subject,
+            role=claims.role,
+            expires_at=claims.expires_at,
+        )
+
+    if provider_expired_error is not None:
+        raise AuthenticationServiceError("The access token has expired.") from provider_expired_error
+    raise AuthenticationServiceError("The access token is invalid.") from provider_decode_error

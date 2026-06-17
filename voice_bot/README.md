@@ -30,10 +30,14 @@ The voice bot does not implement underwriting, quote pricing, payment processing
   Builds the shared MCP-backed tool runtime and in-memory auth session.
 - `voice_bot/functions.py`
   Registers Pipecat function-calling tools that map 1-to-1 to existing `insureflow_mcp` tools.
+- `voice_bot/transports.py`
+  Holds transport parameter builders for WebRTC, Daily, and Twilio runtimes.
+- `voice_bot/session_handlers.py`
+  Registers lifecycle hooks for greetings, SmallWebRTC recovery, and disconnect cleanup.
 - `voice_bot/prompts.py`
   Holds the system instruction used by the voice assistant.
 - `voice_bot/bot.py`
-  Builds the Pipecat audio pipeline and transport hooks.
+  Builds the Pipecat audio pipeline and wires together the voice runtime modules.
 - `voice_bot/__main__.py`
   Allows `python -m voice_bot` to start the bot.
 
