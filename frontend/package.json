@@ -1,24 +1,18 @@
 {
-  "name": "insurefloww-frontend",
+  "name": "insurefloww-frontend-workspace",
   "private": true,
   "version": "0.1.0",
-  "type": "module",
+  "workspaces": [
+    "user-frontend",
+    "user-admin-frontend",
+    "provider-admin-frontend"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "lucide-react": "^0.525.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.30.1"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.3",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.10"
+    "dev:user": "npm --prefix ./user-frontend run dev",
+    "dev:user-admin": "npm --prefix ./user-admin-frontend run dev",
+    "dev:provider-admin": "npm --prefix ./provider-admin-frontend run dev",
+    "build:user": "npm --prefix ./user-frontend run build",
+    "build:user-admin": "npm --prefix ./user-admin-frontend run build",
+    "build:provider-admin": "npm --prefix ./provider-admin-frontend run build"
   }
 }

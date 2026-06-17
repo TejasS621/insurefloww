@@ -23,6 +23,7 @@ from backend.main_backend.core.apis.schemas.requests.admin_request import (
     PolicyStatusUpdateRequest,
     ProviderRegistrationRequest,
     ProviderStatusUpdateRequest,
+    ProviderUpdateRequest,
     TicketAssignmentRequest,
     TicketStatusUpdateRequest,
     UnderwritingDecision,
@@ -311,6 +312,7 @@ class AdminWorkflowService:
         *,
         request_data: ProviderRegistrationRequest,
         actor_id: str,
+        actor_role: str = "ADMIN",
     ) -> Provider:
         """Register a provider record for admin operations and audit the action."""
         await self._backfill_legacy_provider_documents(engine)
@@ -338,6 +340,7 @@ class AdminWorkflowService:
         await self._create_audit_log(
             engine,
             actor_id=actor_id,
+            actor_role=actor_role,
             action=AuditAction.CREATE,
             entity_type="provider",
             entity_id=provider.provider_code,
@@ -354,6 +357,7 @@ class AdminWorkflowService:
         provider_code: str,
         request_data: ProviderStatusUpdateRequest,
         actor_id: str,
+        actor_role: str = "ADMIN",
     ) -> Provider:
         """Update a provider lifecycle state and persist an audit log."""
         await self._backfill_legacy_provider_documents(engine)
@@ -368,6 +372,7 @@ class AdminWorkflowService:
         await self._create_audit_log(
             engine,
             actor_id=actor_id,
+            actor_role=actor_role,
             action=AuditAction.STATUS_CHANGE,
             entity_type="provider",
             entity_id=provider.provider_code,
@@ -377,6 +382,45 @@ class AdminWorkflowService:
                 **self._serialize_provider(provider),
                 "reason": request_data.reason,
             },
+        )
+        return provider
+
+    async def update_provider_profile(
+        self,
+        engine: AIOEngine,
+        *,
+        provider_code: str,
+        request_data: ProviderUpdateRequest,
+        actor_id: str,
+        actor_role: str = "ADMIN",
+    ) -> Provider:
+        """Update editable provider profile fields and persist an audit entry."""
+        await self._backfill_legacy_provider_documents(engine)
+        provider = await engine.find_one(Provider, Provider.provider_code == provider_code)
+        if provider is None:
+            raise NotFoundServiceError("The requested provider could not be found.")
+
+        old_state = self._serialize_provider(provider)
+        provider.provider_name = request_data.provider_name
+        provider.company_name = request_data.company_name
+        provider.contact_email = str(request_data.contact_email)
+        provider.contact_phone = request_data.contact_phone
+        provider.supported_insurance_types = request_data.supported_insurance_types
+        provider.supported_regions = request_data.supported_regions
+        provider.serviceable_products = request_data.serviceable_products
+        provider.notes = request_data.notes
+        provider.updated_at = datetime.now(timezone.utc)
+        await engine.save(provider)
+        await self._create_audit_log(
+            engine,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            action=AuditAction.UPDATE,
+            entity_type="provider",
+            entity_id=provider.provider_code,
+            transaction_reference=None,
+            old_state=old_state,
+            new_state=self._serialize_provider(provider),
         )
         return provider
 
@@ -588,6 +632,7 @@ class AdminWorkflowService:
         engine: AIOEngine,
         *,
         actor_id: str,
+        actor_role: str = "ADMIN",
         action: AuditAction,
         entity_type: str,
         entity_id: str,
@@ -598,7 +643,7 @@ class AdminWorkflowService:
         """Persist an audit log entry for a mutating admin operation."""
         audit_log = AuditLog(
             actor_id=actor_id,
-            actor_role="ADMIN",
+            actor_role=actor_role,
             action=action,
             entity_type=entity_type,
             entity_id=entity_id,
