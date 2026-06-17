@@ -8,6 +8,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "./components/ui/Button";
+import { CustomerChatbotWidget } from "./components/chat/CustomerChatbotWidget";
 import { useAsyncAction } from "./hooks/useAsyncAction";
 import { LayoutShell } from "./layouts/LayoutShell";
 import { ApplicationFlowScreen } from "./pages/application/ApplicationFlowScreen";
@@ -80,6 +81,7 @@ export default function App() {
   const [customerOtpCode, setCustomerOtpCode] = useState("");
   const [customerLoginTarget, setCustomerLoginTarget] = useState<CustomerLoginTarget>("application");
   const [resumedApplication, setResumedApplication] = useState<ApplicationSummary | null>(null);
+  const [latestApplicationPayload, setLatestApplicationPayload] = useState<Parameters<typeof customerApi.createApplication>[0] | null>(null);
   const [transactionReference, setTransactionReference] = useState<string | null>(null);
   const [quotes, setQuotes] = useState<ApplicationQuote[]>([]);
   const [quotesLoading, setQuotesLoading] = useState(false);
@@ -366,6 +368,7 @@ export default function App() {
       setFieldErrors({});
       setQuotesLoading(true);
       setQuotesError("");
+      setLatestApplicationPayload(payload);
       try {
         const application = await customerApi.createApplication(payload);
         if (!application.quotes.length) {
@@ -732,6 +735,12 @@ export default function App() {
           tickets={ticketsState.data}
         />
       ) : null}
+      <CustomerChatbotWidget
+        applicationPayload={latestApplicationPayload}
+        currentScreen={customerScreen}
+        customerMobileNumber={customerMobileNumber}
+        transactionReference={transactionReference}
+      />
     </LayoutShell>
   );
 }

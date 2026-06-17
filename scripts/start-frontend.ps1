@@ -3,4 +3,4 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location (Join-Path $root "frontend")
 
-npm.cmd run dev
+npm.cmd run dev:user

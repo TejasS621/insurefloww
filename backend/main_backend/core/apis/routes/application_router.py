@@ -20,7 +20,6 @@ from fastapi import APIRouter, Depends, status
 from odmantic import AIOEngine
 
 from backend.main_backend.commons.logger import get_logger
-from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import to_application_response
 from backend.main_backend.core.apis.routes.dependencies import (
     get_current_user_id,
@@ -47,7 +46,6 @@ logger = get_logger(__name__)
     response_model=APIResponse[ApplicationSummaryResponse],
     status_code=status.HTTP_201_CREATED,
 )
-@route_guard
 async def create_application(
     request_data: ApplicationCreateRequest,
     engine: AIOEngine = Depends(get_database),
@@ -113,7 +111,6 @@ async def create_application(
 
 
 @application_router.get("/me", response_model=APIResponse[list[ApplicationSummaryResponse]])
-@route_guard
 async def list_my_applications(
     engine: AIOEngine = Depends(get_database),
     user_id: str = Depends(get_current_user_id),

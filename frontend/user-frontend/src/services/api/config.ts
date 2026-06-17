@@ -3,6 +3,10 @@ export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.trim() ||
   "http://127.0.0.1:8000/api/v1";
 
+export const CHATBOT_API_BASE_URL =
+  import.meta.env.VITE_CHAT_BOT_API_BASE_URL?.trim() ||
+  "http://127.0.0.1:8090";
+
 export const REQUEST_DEBOUNCE_MS = 400;
 export const CUSTOMER_PAYMENT_POLL_INTERVAL_MS = 3000;
 export const CUSTOMER_PAYMENT_POLL_LIMIT = 10;

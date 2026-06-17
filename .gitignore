@@ -67,3 +67,7 @@ admin-frontend/dist/
 admin-frontend/.vite/
 admin-frontend/*.tsbuildinfo
 *.tsbuildinfo
+
+frontend/**/node_modules/
+frontend/**/dist/
+frontend/**/*.tsbuildinfo

@@ -20,7 +20,6 @@ from fastapi import APIRouter, Depends, status
 from odmantic import AIOEngine
 
 from backend.provider_backend.commons.logger import get_logger
-from backend.provider_backend.core.apis.routes._helpers import route_guard
 from backend.provider_backend.core.apis.routes._mappers import to_provider_quote_response
 from backend.provider_backend.core.apis.routes.dependencies import get_authenticated_broker
 from backend.provider_backend.core.apis.schemas.requests.provider_quote_request import (
@@ -43,7 +42,6 @@ logger = get_logger(__name__)
     response_model=APIResponse[list[ProviderQuoteResponse]],
     status_code=status.HTTP_201_CREATED,
 )
-@route_guard
 async def generate_quotes(
     request_data: ProviderQuoteCreateRequest,
     engine: AIOEngine = Depends(get_database),
