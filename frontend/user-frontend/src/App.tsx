@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "./components/ui/Button";
 import { CustomerChatbotWidget } from "./components/chat/CustomerChatbotWidget";
+import { VoiceBotWidget } from "./components/chat/VoiceBotWidget";
 import { useAsyncAction } from "./hooks/useAsyncAction";
 import { LayoutShell } from "./layouts/LayoutShell";
 import { ApplicationFlowScreen } from "./pages/application/ApplicationFlowScreen";
@@ -109,6 +110,8 @@ export default function App() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [paymentCountdown, setPaymentCountdown] = useState(30);
   const [tooManyRequestsMessage, setTooManyRequestsMessage] = useState<string | null>(null);
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [isVoiceBotOpen, setIsVoiceBotOpen] = useState(false);
 
   const buildHistoryState = (
     overrides: Partial<AppHistoryState> = {},
@@ -556,6 +559,9 @@ export default function App() {
 
   return (
     <LayoutShell
+      contentClassName={
+        isChatbotOpen || isVoiceBotOpen ? "if-shell-content-has-assistant-panel" : undefined
+      }
       navProps={{
         notificationCount: customerToken ? 2 : undefined,
         rightSlot: (
@@ -739,7 +745,14 @@ export default function App() {
         applicationPayload={latestApplicationPayload}
         currentScreen={customerScreen}
         customerMobileNumber={customerMobileNumber}
+        onOpenChange={setIsChatbotOpen}
+        suppressLauncher={isVoiceBotOpen}
         transactionReference={transactionReference}
+      />
+      <VoiceBotWidget
+        customerMobileNumber={customerMobileNumber ?? ""}
+        onOpenChange={setIsVoiceBotOpen}
+        suppressLauncher={isChatbotOpen}
       />
     </LayoutShell>
   );
