@@ -13,6 +13,7 @@ interface NavItem {
 
 interface LayoutShellProps {
   children: ReactNode;
+  contentClassName?: string;
   navProps?: {
     notificationCount?: number;
     rightSlot?: ReactNode;
@@ -32,6 +33,7 @@ interface LayoutShellProps {
  */
 export function LayoutShell({
   children,
+  contentClassName,
   navProps,
   sidebarProps,
   bottomNavProps,
@@ -140,7 +142,7 @@ export function LayoutShell({
           </aside>
         ) : null}
 
-        <main className="if-shell-content">
+        <main className={["if-shell-content", contentClassName].filter(Boolean).join(" ")}>
           <div className="if-content-shell">{children}</div>
         </main>
       </div>

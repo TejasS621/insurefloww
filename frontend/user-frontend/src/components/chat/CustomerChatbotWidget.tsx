@@ -37,6 +37,8 @@ interface CustomerChatbotWidgetProps {
   currentScreen: string;
   customerMobileNumber?: string;
   transactionReference?: string | null;
+  onOpenChange?: (isOpen: boolean) => void;
+  suppressLauncher?: boolean;
 }
 
 interface HealthQuoteFormState {
@@ -517,6 +519,8 @@ export function CustomerChatbotWidget({
   currentScreen,
   customerMobileNumber = "",
   transactionReference,
+  onOpenChange,
+  suppressLauncher = false,
 }: CustomerChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [sessionId, setSessionId] = useState(() => createSessionId());
@@ -548,6 +552,10 @@ export function CustomerChatbotWidget({
       mobileNumber: current.mobileNumber || customerMobileNumber,
     }));
   }, [customerMobileNumber]);
+
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
 
   const resetChat = () => {
     setMessages([]);
@@ -1288,15 +1296,17 @@ export function CustomerChatbotWidget({
         </section>
       ) : null}
 
-      <button
-        className="if-chatbot-trigger"
-        onClick={() => setIsOpen((current) => !current)}
-        type="button"
-        aria-label={isOpen ? "Close assistant" : "Open assistant"}
-      >
-        <MessageCircleMore size={20} />
-        <span>Chat with InsureFlow</span>
-      </button>
+      {!isOpen && !suppressLauncher ? (
+        <button
+          className="if-chatbot-trigger"
+          onClick={() => setIsOpen(true)}
+          type="button"
+          aria-label="Open assistant"
+        >
+          <MessageCircleMore size={20} />
+          <span>Chat with InsureFlow</span>
+        </button>
+      ) : null}
     </div>
   );
 }
