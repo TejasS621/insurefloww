@@ -459,7 +459,7 @@ export default function App() {
         }
         if (status.payment_status === "FAILED") {
           setPaymentStatus("failed");
-          setPaymentError("Payment failed. Please retry the payment flow.");
+          setPaymentError("The payment provider reported this payment as failed. Please retry the checkout flow.");
           return;
         }
       } catch (error) {
@@ -467,7 +467,7 @@ export default function App() {
       }
     }
     setPaymentStatus("failed");
-    setPaymentError("Payment verification timed out. Please retry.");
+    setPaymentError("We could not confirm the payment yet. If money was debited, wait a moment and check the status again before retrying.");
   };
 
   const startPaymentVerification = async (reference: string) => {
@@ -517,7 +517,8 @@ export default function App() {
             await startPaymentVerification(transactionReference);
           },
           () => {
-            void startPaymentVerification(transactionReference);
+            setPaymentStatus("failed");
+            setPaymentError("The payment window was closed before the payment could be confirmed.");
           }
         );
       } catch (error) {

@@ -81,7 +81,7 @@ export function CustomerLoginScreen({
 
           <footer
             className="if-form-footer"
-            style={{ borderTop: "1px solid var(--if-border)", marginTop: "24px", paddingTop: "20px" }}
+            style={{ borderTop: "1px solid var(--color-border)", marginTop: "24px", paddingTop: "20px" }}
           >
             <Button onClick={onBack} variant="ghost">
               Back

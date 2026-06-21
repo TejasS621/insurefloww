@@ -91,10 +91,10 @@ export function QuoteComparisonScreen({
         <span
           className="if-summary-pill"
           style={{
-            background: "rgba(124, 58, 237, 0.15)",
-            border: "1px solid var(--if-violet)",
+            background: "var(--color-surface-2)",
+            border: "1px solid var(--color-border-hover)",
             borderRadius: "var(--radius-pill)",
-            color: "var(--if-text-1)",
+            color: "var(--color-text-primary)",
             padding: "8px 16px",
             fontSize: "13px",
             fontWeight: 500
@@ -116,8 +116,8 @@ export function QuoteComparisonScreen({
               key={quote.quote_id}
               style={{
                 background: "var(--if-card-bg)",
-                border: isRecommended ? "2px solid var(--if-violet)" : "1px solid var(--if-border)",
-                backgroundColor: isRecommended ? "rgba(124, 58, 237, 0.06)" : "var(--if-card-bg)",
+                border: isRecommended ? "2px solid var(--color-accent)" : "1px solid var(--if-border)",
+                backgroundColor: isRecommended ? "var(--color-surface-2)" : "var(--if-card-bg)",
                 borderRadius: "var(--radius-md)",
                 padding: "28px 24px",
                 display: "flex",
@@ -130,8 +130,8 @@ export function QuoteComparisonScreen({
                 <div
                   className="if-recommended-badge"
                   style={{
-                    background: "var(--if-grad-primary)",
-                    color: "var(--if-text-inverse)",
+                    background: "var(--color-accent)",
+                    color: "var(--color-text-on-accent)",
                     fontSize: "11px",
                     fontWeight: 600,
                     padding: "3px 10px",
@@ -153,8 +153,8 @@ export function QuoteComparisonScreen({
                     width: "40px",
                     height: "40px",
                     borderRadius: "50%",
-                    background: "var(--if-violet)",
-                    color: "var(--if-text-inverse)",
+                    background: "var(--color-accent)",
+                    color: "var(--color-text-on-accent)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -273,8 +273,7 @@ export function QuoteComparisonScreen({
       <div
         className="if-sticky-total-bar"
         style={{
-          background: "color-mix(in srgb, var(--if-charcoal) 92%, transparent)",
-          backdropFilter: "blur(12px)",
+          background: "var(--color-surface)",
           border: "1px solid var(--if-border)",
           borderRadius: "var(--radius-md)",
           padding: "18px 24px",
@@ -292,7 +291,7 @@ export function QuoteComparisonScreen({
           <p className="if-total-label" style={{ color: "var(--if-text-2)", margin: 0, fontSize: "13px" }}>
             Base {formatCurrencyINR(selectedQuote?.total_premium ?? 0)} + Add-ons {formatCurrencyINR(addonTotal)} =
           </p>
-          <p className="if-total-value" style={{ color: "var(--if-text-inverse)", fontSize: "20px", fontWeight: 700, margin: "4px 0 0" }}>
+          <p className="if-total-value" style={{ color: "var(--color-text-primary)", fontSize: "20px", fontWeight: 700, margin: "4px 0 0" }}>
             Total {formatCurrencyINR(grandTotal)}
           </p>
         </div>

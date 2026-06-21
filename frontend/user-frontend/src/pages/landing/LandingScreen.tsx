@@ -88,7 +88,7 @@ export function LandingScreen({ onSelectType, onLogin }: LandingScreenProps) {
               fontSize: "36px",
               fontWeight: 700,
               lineHeight: 1.2,
-              color: "var(--if-text-inverse)",
+              color: "var(--color-text-primary)",
               marginBottom: "16px",
             }}
           >
@@ -97,7 +97,7 @@ export function LandingScreen({ onSelectType, onLogin }: LandingScreenProps) {
           <p
             className="if-customer-hero-text"
             style={{
-              color: "var(--if-text-inverse-muted)",
+              color: "var(--color-text-secondary)",
               fontSize: "18px",
               lineHeight: 1.6,
               maxWidth: "600px",
@@ -169,7 +169,7 @@ export function LandingScreen({ onSelectType, onLogin }: LandingScreenProps) {
                     e.stopPropagation();
                     onSelectType(card.type);
                   }}
-                  variant={isSelected ? "primary" : "ghost"}
+                  variant="ghost"
                   style={{ width: "100%", marginTop: "auto" }}
                 >
                   Explore Plans

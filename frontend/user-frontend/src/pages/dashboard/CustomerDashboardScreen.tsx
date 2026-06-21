@@ -87,22 +87,22 @@ export function CustomerDashboardScreen({
         value: formatCurrencyINR(
           policiesState.data.reduce((total, policy) => total + (policy.coverage_amount ?? 0), 0),
         ),
-        variant: "stat-1" as const,
+        variant: "coverage" as const,
       },
       {
         label: "Active Policies",
         value: String(policiesState.data.length),
-        variant: "stat-2" as const,
+        variant: "policies" as const,
       },
       {
         label: "Next Renewal",
         value: activePolicy?.end_date ? new Date(activePolicy.end_date).toLocaleDateString("en-IN") : "N/A",
-        variant: "stat-3" as const,
+        variant: "renewal" as const,
       },
       {
         label: "Tickets Open",
         value: String(ticketsState.data.length),
-        variant: "stat-4" as const,
+        variant: "tickets" as const,
       },
     ],
     [activePolicy?.end_date, policiesState.data, ticketsState.data.length],
