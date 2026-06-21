@@ -49,7 +49,7 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: 58%;
+  width: 56%;
   height: 100%;
   overflow: hidden;
   pointer-events: none;
@@ -87,6 +87,12 @@
 .if-hero-ink-ribbon-shine {
   opacity: var(--hero-ribbon-shine-opacity);
   filter: blur(var(--hero-ribbon-shine-blur));
+}
+
+@media (max-width: 1280px) {
+  .if-hero-ink-ribbon {
+    width: 52%;
+  }
 }
 
 @media (max-width: 960px) {
@@ -1476,6 +1482,17 @@
   right: 24px;
 }
 
+.if-chatbot-root.is-landing-launcher {
+  bottom: 84px !important;
+  right: 18px;
+  top: auto;
+}
+
+.if-chatbot-root.is-launcher-hidden,
+.if-voice-root.is-launcher-hidden {
+  pointer-events: none;
+}
+
 /* ─── Voice Bot Widget ─────────────────────────────────────────────────────── */
 
 /* Voice root: fixed anchor, bottom-right corner */
@@ -1484,6 +1501,67 @@
   position: fixed;
   right: 24px;
   z-index: 1199;
+}
+
+.if-voice-root.is-landing-launcher {
+  bottom: 24px;
+  right: 18px;
+  top: auto;
+}
+
+.if-chatbot-root.is-landing-launcher .if-chatbot-trigger,
+.if-voice-root.is-landing-launcher .if-voice-trigger {
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  gap: 6px;
+  min-height: 34px;
+  min-width: 154px;
+  padding: 0 10px;
+  opacity: 1;
+  transition:
+    opacity 140ms ease-out,
+    box-shadow 0.2s,
+    transform 0.15s;
+}
+
+.if-chatbot-root.is-landing-launcher .if-chatbot-trigger svg,
+.if-voice-root.is-landing-launcher .if-voice-trigger svg {
+  height: 15px;
+  width: 15px;
+}
+
+.if-chatbot-root.is-launcher-hidden .if-chatbot-trigger,
+.if-voice-root.is-launcher-hidden .if-voice-trigger {
+  opacity: 0;
+}
+
+@media (max-width: 1279px) {
+  .if-chatbot-root.is-landing-launcher {
+    bottom: 84px !important;
+    right: 16px;
+    top: auto;
+  }
+
+  .if-voice-root.is-landing-launcher {
+    bottom: 24px;
+    right: 16px;
+    top: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .if-chatbot-root.is-landing-launcher .if-chatbot-trigger,
+  .if-voice-root.is-landing-launcher .if-voice-trigger {
+    min-height: 38px;
+    min-width: 38px;
+    padding: 0;
+    width: 38px;
+  }
+
+  .if-chatbot-root.is-landing-launcher .if-chatbot-trigger span,
+  .if-voice-root.is-landing-launcher .if-voice-trigger span {
+    display: none;
+  }
 }
 
 /* Trigger FAB */

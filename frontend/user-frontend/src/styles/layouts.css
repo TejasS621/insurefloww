@@ -139,6 +139,16 @@
   padding: 28px 0 calc(28px + var(--if-bottom-nav-height));
 }
 
+.if-shell-content.if-shell-content-landing {
+  padding-top: 0;
+}
+
+.if-shell-content.if-shell-content-landing .if-content-shell {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 @media (min-width: 1100px) {
   .if-shell-content.if-shell-content-has-assistant-panel .if-content-shell {
     padding-right: 440px;

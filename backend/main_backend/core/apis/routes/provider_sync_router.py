@@ -15,11 +15,10 @@ Raises:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from odmantic import AIOEngine
 
 from backend.main_backend.commons.logger import get_logger
-from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.routes._mappers import to_provider_sync_response
 from backend.main_backend.core.apis.routes.dependencies import (
     get_authenticated_broker,
@@ -45,9 +44,8 @@ logger = get_logger(__name__)
     "/webhook",
     response_model=APIResponse[ProviderWebhookSyncResponse],
 )
-@route_guard
 async def receive_provider_sync(
-    request_data: ProviderWebhookPayload,
+    request_data: ProviderWebhookPayload = Body(...),
     engine: AIOEngine = Depends(get_database),
     _: object = Depends(get_authenticated_broker),
 ) -> APIResponse[ProviderWebhookSyncResponse]:

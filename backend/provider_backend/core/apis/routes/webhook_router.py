@@ -16,11 +16,10 @@ Raises:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from odmantic import AIOEngine
 
 from backend.provider_backend.commons.logger import get_logger
-from backend.provider_backend.core.apis.routes._helpers import route_guard
 from backend.provider_backend.core.apis.schemas.requests.webhook_request import (
     PaymentSuccessWebhookRequest,
 )
@@ -40,9 +39,8 @@ logger = get_logger(__name__)
     "/payment-success",
     response_model=APIResponse[WebhookAcknowledgementResponse],
 )
-@route_guard
 async def payment_success_webhook(
-    request_data: PaymentSuccessWebhookRequest,
+    request_data: PaymentSuccessWebhookRequest = Body(...),
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[WebhookAcknowledgementResponse]:
     """

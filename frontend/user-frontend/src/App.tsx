@@ -112,6 +112,7 @@ export default function App() {
   const [tooManyRequestsMessage, setTooManyRequestsMessage] = useState<string | null>(null);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [isVoiceBotOpen, setIsVoiceBotOpen] = useState(false);
+  const [landingLaunchersVisible, setLandingLaunchersVisible] = useState(false);
 
   const buildHistoryState = (
     overrides: Partial<AppHistoryState> = {},
@@ -561,7 +562,12 @@ export default function App() {
   return (
     <LayoutShell
       contentClassName={
-        isChatbotOpen || isVoiceBotOpen ? "if-shell-content-has-assistant-panel" : undefined
+        [
+          customerScreen === "landing" ? "if-shell-content-landing" : "",
+          isChatbotOpen || isVoiceBotOpen ? "if-shell-content-has-assistant-panel" : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined
       }
       navProps={{
         notificationCount: customerToken ? 2 : undefined,
@@ -646,6 +652,7 @@ export default function App() {
       {customerScreen === "landing" ? (
         <LandingScreen
           onLogin={() => openCustomerLogin("dashboard")}
+          onLauncherVisibilityChange={setLandingLaunchersVisible}
           onSelectType={(type) => {
             setSelectedInsuranceType(type.toUpperCase() as InsuranceType);
             navigateCustomerScreen("application");
@@ -747,12 +754,15 @@ export default function App() {
         currentScreen={customerScreen}
         customerMobileNumber={customerMobileNumber}
         onOpenChange={setIsChatbotOpen}
+        showLauncher={customerScreen !== "landing" || landingLaunchersVisible}
         suppressLauncher={isVoiceBotOpen}
         transactionReference={transactionReference}
       />
       <VoiceBotWidget
+        currentScreen={customerScreen}
         customerMobileNumber={customerMobileNumber ?? ""}
         onOpenChange={setIsVoiceBotOpen}
+        showLauncher={customerScreen !== "landing" || landingLaunchersVisible}
         suppressLauncher={isChatbotOpen}
       />
     </LayoutShell>

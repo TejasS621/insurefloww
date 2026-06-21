@@ -38,6 +38,7 @@ interface CustomerChatbotWidgetProps {
   customerMobileNumber?: string;
   transactionReference?: string | null;
   onOpenChange?: (isOpen: boolean) => void;
+  showLauncher?: boolean;
   suppressLauncher?: boolean;
 }
 
@@ -520,6 +521,7 @@ export function CustomerChatbotWidget({
   customerMobileNumber = "",
   transactionReference,
   onOpenChange,
+  showLauncher = true,
   suppressLauncher = false,
 }: CustomerChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -865,7 +867,11 @@ export function CustomerChatbotWidget({
 
 
   return (
-    <div className="if-chatbot-root">
+    <div
+      className={`if-chatbot-root ${currentScreen === "landing" && !isOpen ? "is-landing-launcher" : ""} ${
+        !showLauncher ? "is-launcher-hidden" : ""
+      }`}
+    >
       {isOpen ? (
         <section className="if-chatbot-panel" aria-label="InsureFlow assistant">
           <header className="if-chatbot-header">
