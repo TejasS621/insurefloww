@@ -16,7 +16,7 @@ Raises:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Body, Depends, status
 from fastapi.responses import HTMLResponse
 from odmantic import AIOEngine
 
@@ -53,9 +53,8 @@ logger = get_logger(__name__)
     response_model=APIResponse[ProviderPaymentResponse],
     status_code=status.HTTP_201_CREATED,
 )
-@route_guard
 async def create_payment_session(
-    request_data: PaymentSessionCreateRequest,
+    request_data: PaymentSessionCreateRequest = Body(...),
     engine: AIOEngine = Depends(get_database),
     _: object = Depends(get_authenticated_broker),
 ) -> APIResponse[ProviderPaymentResponse]:
@@ -93,9 +92,8 @@ async def create_payment_session(
     response_model=APIResponse[MockPaymentSessionResponse],
     status_code=status.HTTP_201_CREATED,
 )
-@route_guard
 async def create_mock_payment_session(
-    request_data: MockPaymentCreateRequest,
+    request_data: MockPaymentCreateRequest = Body(...),
     engine: AIOEngine = Depends(get_database),
     _: object = Depends(get_authenticated_broker),
 ) -> APIResponse[MockPaymentSessionResponse]:

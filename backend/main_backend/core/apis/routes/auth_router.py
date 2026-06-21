@@ -18,13 +18,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Body, Depends, status
 from odmantic import AIOEngine
 
 from backend.main_backend.commons.auth import create_access_token
 from backend.main_backend.commons.config import settings
 from backend.main_backend.commons.logger import get_logger
-from backend.main_backend.core.apis.routes._helpers import route_guard
 from backend.main_backend.core.apis.schemas.requests.auth_request import (
     AdminLoginRequest,
     AdminVerifyRequest,
@@ -53,9 +52,8 @@ auth_router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
     response_model=APIResponse[OTPDispatchResponse],
     status_code=status.HTTP_202_ACCEPTED,
 )
-@route_guard
 async def request_customer_otp(
-    request_data: OTPLoginRequest,
+    request_data: OTPLoginRequest = Body(...),
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[OTPDispatchResponse]:
     """
@@ -101,9 +99,8 @@ async def request_customer_otp(
 
 
 @auth_router.post("/login/verify", response_model=APIResponse[AuthTokenResponse])
-@route_guard
 async def verify_customer_otp(
-    request_data: OTPVerifyRequest,
+    request_data: OTPVerifyRequest = Body(...),
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[AuthTokenResponse]:
     """
@@ -224,9 +221,8 @@ async def _link_customer_records_by_mobile(
 
 
 @auth_router.post("/admin/login", response_model=APIResponse[AuthTokenResponse])
-@route_guard
 async def request_admin_login(
-    request_data: AdminLoginRequest,
+    request_data: AdminLoginRequest = Body(...),
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[AuthTokenResponse]:
     """
@@ -282,9 +278,8 @@ async def request_admin_login(
 
 
 @auth_router.post("/admin/login/verify", response_model=APIResponse[AuthTokenResponse])
-@route_guard
 async def verify_admin_login(
-    request_data: AdminVerifyRequest,
+    request_data: AdminVerifyRequest = Body(...),
     engine: AIOEngine = Depends(get_database),
 ) -> APIResponse[AuthTokenResponse]:
     """

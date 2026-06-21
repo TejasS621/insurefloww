@@ -112,6 +112,7 @@ export default function App() {
   const [tooManyRequestsMessage, setTooManyRequestsMessage] = useState<string | null>(null);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [isVoiceBotOpen, setIsVoiceBotOpen] = useState(false);
+  const [landingLaunchersVisible, setLandingLaunchersVisible] = useState(false);
 
   const buildHistoryState = (
     overrides: Partial<AppHistoryState> = {},
@@ -459,7 +460,7 @@ export default function App() {
         }
         if (status.payment_status === "FAILED") {
           setPaymentStatus("failed");
-          setPaymentError("Payment failed. Please retry the payment flow.");
+          setPaymentError("The payment provider reported this payment as failed. Please retry the checkout flow.");
           return;
         }
       } catch (error) {
@@ -467,7 +468,7 @@ export default function App() {
       }
     }
     setPaymentStatus("failed");
-    setPaymentError("Payment verification timed out. Please retry.");
+    setPaymentError("We could not confirm the payment yet. If money was debited, wait a moment and check the status again before retrying.");
   };
 
   const startPaymentVerification = async (reference: string) => {
@@ -517,7 +518,8 @@ export default function App() {
             await startPaymentVerification(transactionReference);
           },
           () => {
-            void startPaymentVerification(transactionReference);
+            setPaymentStatus("failed");
+            setPaymentError("The payment window was closed before the payment could be confirmed.");
           }
         );
       } catch (error) {
@@ -560,7 +562,12 @@ export default function App() {
   return (
     <LayoutShell
       contentClassName={
-        isChatbotOpen || isVoiceBotOpen ? "if-shell-content-has-assistant-panel" : undefined
+        [
+          customerScreen === "landing" ? "if-shell-content-landing" : "",
+          isChatbotOpen || isVoiceBotOpen ? "if-shell-content-has-assistant-panel" : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined
       }
       navProps={{
         notificationCount: customerToken ? 2 : undefined,
@@ -645,6 +652,7 @@ export default function App() {
       {customerScreen === "landing" ? (
         <LandingScreen
           onLogin={() => openCustomerLogin("dashboard")}
+          onLauncherVisibilityChange={setLandingLaunchersVisible}
           onSelectType={(type) => {
             setSelectedInsuranceType(type.toUpperCase() as InsuranceType);
             navigateCustomerScreen("application");
@@ -746,12 +754,15 @@ export default function App() {
         currentScreen={customerScreen}
         customerMobileNumber={customerMobileNumber}
         onOpenChange={setIsChatbotOpen}
+        showLauncher={customerScreen !== "landing" || landingLaunchersVisible}
         suppressLauncher={isVoiceBotOpen}
         transactionReference={transactionReference}
       />
       <VoiceBotWidget
+        currentScreen={customerScreen}
         customerMobileNumber={customerMobileNumber ?? ""}
         onOpenChange={setIsVoiceBotOpen}
+        showLauncher={customerScreen !== "landing" || landingLaunchersVisible}
         suppressLauncher={isChatbotOpen}
       />
     </LayoutShell>

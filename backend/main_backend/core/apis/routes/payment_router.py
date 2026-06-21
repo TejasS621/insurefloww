@@ -55,6 +55,32 @@ payment_router = APIRouter(prefix="/api/v1/payments", tags=["Payments"])
 logger = get_logger(__name__)
 
 
+def _build_payment_contact_email(
+    transaction_reference: str,
+    email: str | None,
+) -> str:
+    """
+    Return a provider-safe checkout email address.
+
+    Args:
+        transaction_reference: Main transaction reference used to build a fallback.
+        email: Customer email captured during the application flow.
+
+    Returns:
+        str: Real customer email when present, otherwise a generated guest address
+        that satisfies provider checkout validation.
+    """
+    if email and email.strip():
+        return email.strip()
+
+    sanitized_reference = "".join(
+        character.lower()
+        for character in transaction_reference
+        if character.isalnum()
+    )
+    return f"guest-{sanitized_reference}@example.com"
+
+
 @payment_router.post(
     "/initiate/{transaction_reference}",
     response_model=APIResponse[PaymentInitiationResponse],
@@ -122,7 +148,10 @@ async def initiate_payment(
             customer_full_name=(
                 f"{application.personal_details.first_name} {application.personal_details.last_name}".strip()
             ),
-            customer_email=application.personal_details.email,
+            customer_email=_build_payment_contact_email(
+                transaction_reference,
+                application.personal_details.email,
+            ),
             customer_mobile_number=application.personal_details.mobile_number,
             selected_payment_method=(
                 request_data.selected_payment_method if request_data is not None else None

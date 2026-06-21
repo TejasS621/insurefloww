@@ -32,10 +32,14 @@ interface TranscriptLine {
 interface VoiceBotWidgetProps {
   /** Voice bot backend base URL (SmallWebRTC Pipecat runner). */
   voiceBotUrl?: string;
+  /** Current customer screen for launcher placement adjustments. */
+  currentScreen?: string;
   /** If the user has context from the chatbot (e.g., mobile), pass it here. */
   customerMobileNumber?: string;
   /** Notifies the parent when the voice panel opens or closes. */
   onOpenChange?: (isOpen: boolean) => void;
+  /** Controls whether the closed launcher should be visible. */
+  showLauncher?: boolean;
   /** Hides the launcher when another assistant is active. */
   suppressLauncher?: boolean;
 }
@@ -73,8 +77,10 @@ const STATUS_COLORS: Record<VoiceStatus, string> = {
 
 export function VoiceBotWidget({
   voiceBotUrl = VOICE_BOT_BASE,
+  currentScreen = "",
   customerMobileNumber = "",
   onOpenChange,
+  showLauncher = true,
   suppressLauncher = false,
 }: VoiceBotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -353,7 +359,11 @@ export function VoiceBotWidget({
     .join(" ");
 
   return (
-    <div className="if-voice-root">
+    <div
+      className={`if-voice-root ${currentScreen === "landing" && !isOpen ? "is-landing-launcher" : ""} ${
+        !showLauncher ? "is-launcher-hidden" : ""
+      }`}
+    >
       {/* Hidden audio output element */}
       <audio
         ref={audioOutputRef}

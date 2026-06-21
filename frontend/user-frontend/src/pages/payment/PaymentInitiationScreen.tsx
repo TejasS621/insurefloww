@@ -64,6 +64,8 @@ export function PaymentInitiationScreen({
           className="if-surface-card"
           style={{
             background: "var(--if-card-bg)",
+            backdropFilter: "none",
+            WebkitBackdropFilter: "none",
             border: "1px solid var(--if-border)",
             borderRadius: "var(--radius-md)",
             padding: "28px 24px",
@@ -128,8 +130,8 @@ export function PaymentInitiationScreen({
           </div>
 
           {paymentStatus === "failed" ? (
-            <div className="if-inline-note" style={{ color: "var(--if-danger)", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: "var(--radius-md)", padding: "12px 14px", fontSize: "14px" }}>
-              Payment failed. You can retry the checkout initiation flow.
+            <div className="if-inline-note" style={{ color: "var(--color-text-primary)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-fg)", borderRadius: "var(--radius-md)", padding: "12px 14px", fontSize: "14px" }}>
+              {error ?? "Payment failed. Please retry the checkout flow."}
             </div>
           ) : null}
 
@@ -137,10 +139,10 @@ export function PaymentInitiationScreen({
             <div
               className="if-inline-note"
               style={{
-                background: "rgba(16,185,129,0.1)",
-                border: "1px solid rgba(16,185,129,0.2)",
+                background: "var(--color-success-bg)",
+                border: "1px solid var(--color-success-fg)",
                 borderRadius: "var(--radius-md)",
-                color: "var(--if-success)",
+                color: "var(--color-text-primary)",
                 display: "grid",
                 gap: "12px",
                 padding: "14px 16px",
@@ -174,6 +176,8 @@ export function PaymentInitiationScreen({
           className="if-surface-card"
           style={{
             background: "var(--if-card-alt)",
+            backdropFilter: "none",
+            WebkitBackdropFilter: "none",
             border: "1px solid var(--if-border)",
             borderRadius: "var(--radius-md)",
             padding: "28px 24px",
@@ -191,7 +195,7 @@ export function PaymentInitiationScreen({
 
           <div className="if-trust-stack" style={{ display: "grid", gap: "20px" }}>
             <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
-              <div style={{ color: "var(--if-cyan)", marginTop: "2px" }}>
+              <div style={{ color: "var(--color-text-secondary)", marginTop: "2px" }}>
                 <Shield size={22} />
               </div>
               <div>
@@ -201,7 +205,7 @@ export function PaymentInitiationScreen({
             </div>
 
             <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
-              <div style={{ color: "var(--if-cyan)", marginTop: "2px" }}>
+              <div style={{ color: "var(--color-text-secondary)", marginTop: "2px" }}>
                 <Award size={22} />
               </div>
               <div>
@@ -211,11 +215,11 @@ export function PaymentInitiationScreen({
             </div>
 
             <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
-              <div style={{ color: "var(--if-cyan)", marginTop: "2px" }}>
+              <div style={{ color: "var(--color-text-secondary)", marginTop: "2px" }}>
                 <Headset size={22} />
               </div>
               <div>
-                <strong style={{ color: "#fff", display: "block", fontSize: "15px", fontWeight: 600 }}>24×7 Support</strong>
+                <strong style={{ color: "var(--color-text-primary)", display: "block", fontSize: "15px", fontWeight: 600 }}>24×7 Support</strong>
                 <span style={{ color: "var(--if-text-2)", fontSize: "13px" }}>Always here for you</span>
               </div>
             </div>
@@ -250,3 +254,4 @@ export function PaymentInitiationScreen({
     </div>
   );
 }
+
