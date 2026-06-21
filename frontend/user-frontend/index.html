@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>InsureFlow</title>
+    <script>
+      (function() {
+        var saved = localStorage.getItem('if-theme');
+        var theme = saved === 'light' || saved === 'dark' ? saved : 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
