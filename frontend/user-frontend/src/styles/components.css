@@ -37,6 +37,70 @@
   color: var(--color-text-on-accent);
 }
 
+.if-customer-hero.if-customer-hero-with-ribbon {
+  isolation: isolate;
+}
+
+.if-customer-hero.if-customer-hero-with-ribbon::after {
+  content: none;
+}
+
+.if-hero-ink-ribbon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 58%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.if-hero-ink-ribbon-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.if-hero-ink-ribbon-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    transparent 13%,
+    transparent 88%,
+    var(--color-surface) 100%
+  );
+}
+
+.if-hero-ink-ribbon-back {
+  opacity: var(--hero-ribbon-back-opacity);
+  filter: blur(var(--hero-ribbon-back-blur));
+}
+
+.if-hero-ink-ribbon-front {
+  opacity: var(--hero-ribbon-front-opacity);
+  filter: blur(var(--hero-ribbon-front-blur));
+}
+
+.if-hero-ink-ribbon-shine {
+  opacity: var(--hero-ribbon-shine-opacity);
+  filter: blur(var(--hero-ribbon-shine-blur));
+}
+
+@media (max-width: 960px) {
+  .if-hero-ink-ribbon {
+    width: 48%;
+  }
+}
+
+@media (max-width: 720px) {
+  .if-hero-ink-ribbon {
+    display: none;
+  }
+}
+
 .if-button-ghost {
   background: transparent;
   border-color: var(--color-border-hover);

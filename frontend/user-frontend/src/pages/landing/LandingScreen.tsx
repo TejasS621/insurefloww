@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   CarFront,
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "../../components/ui/Button";
+import { HeroInkRibbon } from "./HeroInkRibbon";
 
 type InsuranceType = "health" | "vehicle" | "travel" | "home" | "life";
 
@@ -67,7 +68,8 @@ export function LandingScreen({ onSelectType, onLogin }: LandingScreenProps) {
 
   return (
     <div className="if-screen-stack">
-      <section className="if-customer-hero">
+      <section className="if-customer-hero if-customer-hero-with-ribbon">
+        <HeroInkRibbon />
         <div className="if-customer-hero-copy">
           <p
             className="if-eyebrow"
